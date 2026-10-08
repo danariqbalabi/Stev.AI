@@ -1,30 +1,34 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:steviai/main.dart';
+import 'package:steviai/app/app.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('main demo flow reaches result and opens swap sheet', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const StevAiApp());
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    expect(find.text('Stev.AI'), findsOneWidget);
+    expect(find.text('12 g lagi'), findsOneWidget);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('scanButton')));
+    await tester.pumpAndSettle();
+    expect(find.text('Scan minuman'), findsOneWidget);
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('captureButton')));
+    await tester.pumpAndSettle();
+    expect(find.text('Konfirmasi minuman'), findsOneWidget);
+
+    await tester.drag(find.byType(Scrollable), const Offset(0, -500));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('showResultButton')));
+    await tester.pumpAndSettle();
+    expect(find.text('24 g'), findsOneWidget);
+
+    await tester.drag(find.byType(Scrollable), const Offset(0, -400));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('swapButton')));
+    await tester.pumpAndSettle();
+    expect(find.text('Swap ke yang lebih ringan'), findsOneWidget);
   });
 }
