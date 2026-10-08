@@ -51,16 +51,18 @@ Untuk minuman kemasan, angka gula direncanakan berasal dari informasi label atau
 
 ## Status implementasi
 
-Saat ini repository berisi **app shell** yang dapat diklik dengan data dummy:
+Saat ini repository berisi alur MVP awal yang dapat diklik:
 
 - Dashboard.
-- Scan placeholder.
+- Kamera Android/Web dengan preview hasil foto.
+- Fallback pemilihan gambar dari galeri/file.
+- State izin ditolak, kamera tidak tersedia, dan coba lagi.
 - Konfirmasi minuman.
 - Hasil kandungan gula.
 - Swap bottom sheet.
 - Navigasi Android dan web.
 
-Kamera, AI, database, penyimpanan riwayat, widget Android, dan desain final belum diimplementasikan. Seluruh angka dan minuman yang tampil pada app shell merupakan data demo.
+AI, database, penyimpanan riwayat, widget Android, dan desain final belum diimplementasikan. Seluruh tebakan, angka, dan minuman setelah foto diambil masih merupakan data demo.
 
 ## Ruang lingkup MVP
 
@@ -90,6 +92,8 @@ Kamera, AI, database, penyimpanan riwayat, widget Android, dan desain final belu
 - Flutter dan Dart.
 - Material 3.
 - `go_router` untuk navigasi.
+- `camera` untuk viewfinder dan pengambilan foto di Android/Web.
+- `image_picker` sebagai fallback galeri/file.
 - Android dan Flutter Web dari satu codebase.
 - Supabase untuk backend dan database pada tahap berikutnya.
 - Backend/Edge Function untuk menjaga API key layanan AI agar tidak tersimpan di client.
@@ -119,6 +123,8 @@ Pastikan Flutter telah terpasang dan `flutter doctor` tidak menunjukkan masalah 
 flutter pub get
 flutter run -d chrome
 ```
+
+Browser akan meminta izin kamera saat halaman Scan dibuka. Kamera web hanya dapat digunakan melalui `localhost` saat development atau koneksi HTTPS saat deployment.
 
 Untuk menjalankan pada Android, sambungkan perangkat dengan USB debugging atau jalankan emulator, kemudian:
 

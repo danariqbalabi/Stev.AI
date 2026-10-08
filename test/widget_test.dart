@@ -1,21 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:steviai/app/app.dart';
+import 'package:steviai/app/router.dart';
 
 void main() {
   testWidgets('main demo flow reaches result and opens swap sheet', (
     tester,
   ) async {
+    appRouter.go('/');
     await tester.pumpWidget(const StevAiApp());
 
     expect(find.text('Stev.AI'), findsOneWidget);
     expect(find.text('12 g lagi'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('scanButton')));
-    await tester.pumpAndSettle();
+    // Do not settle indefinitely: the real camera loading state contains an
+    // indeterminate progress indicator and requires a platform device.
+    await tester.pump(const Duration(seconds: 1));
     expect(find.text('Scan minuman'), findsOneWidget);
+    expect(find.byKey(const ValueKey('galleryButton')), findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('captureButton')));
+    // The camera plugin requires a real browser or device, so the shell test
+    // continues from the route that receives a captured image.
+    appRouter.go('/confirmation');
     await tester.pumpAndSettle();
     expect(find.text('Konfirmasi minuman'), findsOneWidget);
 
