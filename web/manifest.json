@@ -1,11 +1,11 @@
 {
-    "name": "steviai",
-    "short_name": "steviai",
+    "name": "Stev.AI",
+    "short_name": "Stev.AI",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Understand the sugar in your drink and discover lower-sugar alternatives.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
