@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../core/theme/stev_theme.dart';
 import 'router.dart';
 
 class StevAiApp extends StatelessWidget {
-  const StevAiApp({super.key});
+  const StevAiApp({super.key, this.router});
+
+  final GoRouter? router;
 
   @override
   Widget build(BuildContext context) {
@@ -12,7 +15,7 @@ class StevAiApp extends StatelessWidget {
       title: 'Stev.AI',
       debugShowCheckedModeBanner: false,
       theme: StevTheme.light,
-      routerConfig: appRouter,
+      routerConfig: router ?? appRouter,
       builder: (context, child) {
         return ColoredBox(
           color: Theme.of(context).colorScheme.surfaceContainer,

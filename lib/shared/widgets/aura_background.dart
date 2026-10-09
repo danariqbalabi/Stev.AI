@@ -30,20 +30,25 @@ class _Auras extends StatelessWidget {
     return Stack(
       clipBehavior: Clip.none,
       children: const [
-        _Aura(
-          alignment: Alignment(-1.35, -1.08),
-          size: 360,
-          color: StevColors.auraLeaf,
+        Positioned(
+          top: 170,
+          left: -90,
+          child: _Aura(size: 280, color: StevColors.auraLeaf),
         ),
-        _Aura(
-          alignment: Alignment(1.42, -0.35),
-          size: 300,
-          color: StevColors.auraSugar,
+        Positioned(
+          top: 58,
+          right: -130,
+          child: _Aura(size: 260, color: StevColors.auraSugar),
         ),
-        _Aura(
-          alignment: Alignment(-0.85, 1.3),
-          size: 330,
-          color: StevColors.auraSun,
+        Positioned(
+          top: 510,
+          right: -88,
+          child: _Aura(size: 240, color: StevColors.auraSun),
+        ),
+        Positioned(
+          bottom: -120,
+          left: -80,
+          child: _Aura(size: 250, color: StevColors.auraLeaf),
         ),
       ],
     );
@@ -51,29 +56,19 @@ class _Auras extends StatelessWidget {
 }
 
 class _Aura extends StatelessWidget {
-  const _Aura({
-    required this.alignment,
-    required this.size,
-    required this.color,
-  });
+  const _Aura({required this.size, required this.color});
 
-  final Alignment alignment;
   final double size;
   final Color color;
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: alignment,
-      child: SizedBox.square(
-        dimension: size,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: RadialGradient(
-              colors: [color, color.withValues(alpha: 0)],
-            ),
-          ),
+    return SizedBox.square(
+      dimension: size,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(colors: [color, color.withValues(alpha: 0)]),
         ),
       ),
     );
