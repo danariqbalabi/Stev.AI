@@ -55,6 +55,7 @@ Saat ini repository berisi alur MVP awal yang dapat diklik:
 
 - Design system Stev.AI dengan token terpusat, font Onest, dan aset SVG.
 - Komponen dasar reusable: logo, maskot, icon, button, glass card, aura, spoon meter, dan level gula.
+- Onboarding first-launch, profil singkat, dan penyimpanan preferensi lokal.
 - Dashboard.
 - Kamera Android/Web dengan preview hasil foto.
 - Fallback pemilihan gambar dari galeri/file.
@@ -64,7 +65,7 @@ Saat ini repository berisi alur MVP awal yang dapat diklik:
 - Swap bottom sheet.
 - Navigasi Android dan web.
 
-AI, database, penyimpanan riwayat, widget Android, dan penerapan desain final ke seluruh screen belum diimplementasikan. Seluruh tebakan, angka, dan minuman setelah foto diambil masih merupakan data demo.
+AI, database, penyimpanan riwayat minuman, widget Android, dan penerapan desain final ke seluruh screen belum diimplementasikan. Seluruh tebakan, angka, dan minuman setelah foto diambil masih merupakan data demo.
 
 ## Design system
 
@@ -110,6 +111,7 @@ Font Onest disimpan lokal agar konsisten pada Android dan web. Lisensi SIL Open 
 - `go_router` untuk navigasi.
 - `camera` untuk viewfinder dan pengambilan foto di Android/Web.
 - `image_picker` sebagai fallback galeri/file.
+- `shared_preferences` untuk status onboarding dan profil lokal.
 - Android dan Flutter Web dari satu codebase.
 - Supabase untuk backend dan database pada tahap berikutnya.
 - Backend/Edge Function untuk menjaga API key layanan AI agar tidak tersimpan di client.
