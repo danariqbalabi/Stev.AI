@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../core/theme/app_theme.dart';
+import '../core/theme/stev_theme.dart';
 import 'router.dart';
 
 class StevAiApp extends StatelessWidget {
@@ -11,7 +11,7 @@ class StevAiApp extends StatelessWidget {
     return MaterialApp.router(
       title: 'Stev.AI',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
+      theme: StevTheme.light,
       routerConfig: appRouter,
       builder: (context, child) {
         return ColoredBox(
