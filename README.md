@@ -53,6 +53,8 @@ Untuk minuman kemasan, angka gula direncanakan berasal dari informasi label atau
 
 Saat ini repository berisi alur MVP awal yang dapat diklik:
 
+- Design system Stev.AI dengan token terpusat, font Onest, dan aset SVG.
+- Komponen dasar reusable: logo, maskot, icon, button, glass card, aura, spoon meter, dan level gula.
 - Dashboard.
 - Kamera Android/Web dengan preview hasil foto.
 - Fallback pemilihan gambar dari galeri/file.
@@ -62,7 +64,20 @@ Saat ini repository berisi alur MVP awal yang dapat diklik:
 - Swap bottom sheet.
 - Navigasi Android dan web.
 
-AI, database, penyimpanan riwayat, widget Android, dan desain final belum diimplementasikan. Seluruh tebakan, angka, dan minuman setelah foto diambil masih merupakan data demo.
+AI, database, penyimpanan riwayat, widget Android, dan penerapan desain final ke seluruh screen belum diimplementasikan. Seluruh tebakan, angka, dan minuman setelah foto diambil masih merupakan data demo.
+
+## Design system
+
+Implementasi UI baru harus mengambil warna, tipografi, spacing, radius, shadow, ukuran, motion, dan aturan gula dari `lib/core/theme/stev_tokens.dart`. Theme aplikasi berada di `lib/core/theme/stev_theme.dart`, sedangkan komponen bersama dapat diimpor dari `lib/shared/widgets/stev_design_system.dart`.
+
+Dokumen handoff dari desain tersedia di `docs/design/`:
+
+- `DESIGN.md`: spesifikasi visual dan komponen.
+- `MOTION.md`: timing, curve, dan perilaku reduced motion.
+- `SCREENS.md`: anatomi setiap screen.
+- `DATA.md`: data demo dan aturan produk.
+
+Font Onest disimpan lokal agar konsisten pada Android dan web. Lisensi SIL Open Font License tersedia di `assets/fonts/OFL.txt`.
 
 ## Ruang lingkup MVP
 
@@ -91,6 +106,7 @@ AI, database, penyimpanan riwayat, widget Android, dan desain final belum diimpl
 
 - Flutter dan Dart.
 - Material 3.
+- Design tokens terpusat, font Onest, dan `flutter_svg` untuk aset vektor.
 - `go_router` untuk navigasi.
 - `camera` untuk viewfinder dan pengambilan foto di Android/Web.
 - `image_picker` sebagai fallback galeri/file.

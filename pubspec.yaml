@@ -37,6 +37,7 @@ dependencies:
   go_router: ^18.0.2
   camera: ^0.12.1
   image_picker: ^1.2.4
+  flutter_svg: ^2.3.0
 
 dev_dependencies:
   flutter_test:
@@ -59,6 +60,22 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  assets:
+    - assets/brand/
+    - assets/icons/
+
+  fonts:
+    - family: Onest
+      fonts:
+        - asset: assets/fonts/Onest-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Onest-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Onest-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Onest-ExtraBold.ttf
+          weight: 800
 
   # To add assets to your application, add an assets section, like this:
   # assets:
