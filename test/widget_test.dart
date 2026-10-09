@@ -11,7 +11,7 @@ void main() {
     await tester.pumpWidget(const StevAiApp());
 
     expect(find.text('Stev.AI'), findsOneWidget);
-    expect(find.text('12 g lagi'), findsOneWidget);
+    expect(find.byKey(const ValueKey('dashboardScreen')), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('scanButton')));
     // Do not settle indefinitely: the real camera loading state contains an

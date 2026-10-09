@@ -36,7 +36,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.text('12 g lagi'), findsOneWidget);
+    expect(find.byKey(const ValueKey('dashboardScreen')), findsOneWidget);
     final preferences = await SharedPreferences.getInstance();
     expect(preferences.getBool(OnboardingPreferences.completeKey), isTrue);
     expect(preferences.getString(OnboardingPreferences.nameKey), 'Danan');
@@ -54,7 +54,7 @@ void main() {
     await tester.pumpWidget(StevAiApp(router: router));
     await tester.pump();
 
-    expect(find.text('12 g lagi'), findsOneWidget);
+    expect(find.byKey(const ValueKey('dashboardScreen')), findsOneWidget);
     expect(find.text('Lihat gula sebelum kamu beli.'), findsNothing);
   });
 
@@ -78,7 +78,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.text('12 g lagi'), findsOneWidget);
+    expect(find.byKey(const ValueKey('dashboardScreen')), findsOneWidget);
     final preferences = await SharedPreferences.getInstance();
     expect(preferences.getBool(OnboardingPreferences.completeKey), isTrue);
     expect(preferences.getString(OnboardingPreferences.nameKey), isNull);

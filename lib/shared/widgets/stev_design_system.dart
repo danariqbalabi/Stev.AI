@@ -4,3 +4,4 @@ export 'glass_card.dart';
 export 'spoon.dart';
 export 'stev_brand.dart';
 export 'stev_button.dart';
+export 'stev_tab_bar.dart';
