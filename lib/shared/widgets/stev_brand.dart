@@ -77,11 +77,18 @@ class StevLogo extends StatelessWidget {
 enum StevIconName { home, weekly, scan, search, swap, back, chevronRight }
 
 class StevIcon extends StatelessWidget {
-  const StevIcon(this.name, {super.key, this.size = 24, this.label});
+  const StevIcon(
+    this.name, {
+    super.key,
+    this.size = 24,
+    this.label,
+    this.color,
+  });
 
   final StevIconName name;
   final double size;
   final String? label;
+  final Color? color;
 
   String get _assetName => switch (name) {
     StevIconName.home => 'home',
@@ -100,6 +107,9 @@ class StevIcon extends StatelessWidget {
       width: size,
       height: size,
       excludeFromSemantics: true,
+      colorFilter: color == null
+          ? null
+          : ColorFilter.mode(color!, BlendMode.srcIn),
     );
 
     if (label == null) return icon;

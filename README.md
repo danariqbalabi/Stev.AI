@@ -56,7 +56,7 @@ Saat ini repository berisi alur MVP awal yang dapat diklik:
 - Design system Stev.AI dengan token terpusat, font Onest, dan aset SVG.
 - Komponen dasar reusable: logo, maskot, icon, button, glass card, aura, spoon meter, dan level gula.
 - Onboarding first-launch, profil singkat, dan penyimpanan preferensi lokal.
-- Dashboard.
+- Dashboard final dengan week strip, meter sendok gula, riwayat minuman, dan tab bar.
 - Kamera Android/Web dengan preview hasil foto.
 - Fallback pemilihan gambar dari galeri/file.
 - State izin ditolak, kamera tidak tersedia, dan coba lagi.
@@ -99,7 +99,7 @@ Font Onest disimpan lokal agar konsisten pada Android dan web. Lisensi SIL Open 
 - Pencarian minuman manual.
 - Grafik konsumsi mingguan.
 - Tambah minuman custom.
-- Onboarding dan personalisasi.
+- Personalisasi lanjutan berdasarkan profil onboarding.
 - Animasi penghematan gula dan confetti kontekstual.
 - Dukungan kategori makanan.
 
