@@ -40,6 +40,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('swapButton')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
-    expect(find.text('Swap ke yang lebih ringan'), findsOneWidget);
+    expect(find.byKey(const ValueKey('swapRewardOverlay')), findsOneWidget);
+    expect(find.text('Mantap, hemat 8 g!'), findsOneWidget);
   });
 }

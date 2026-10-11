@@ -65,7 +65,7 @@ Saat ini repository berisi alur MVP awal yang dapat diklik:
 - State izin ditolak, kamera tidak tersedia, dan coba lagi.
 - Konfirmasi minuman sesuai design handoff dengan foto hasil scan, tiga kandidat katalog, dan penanda kandidat paling cocok.
 - Hasil kandungan gula sesuai design handoff dengan level picker, visual sendok, status batas harian, dan pencatatan ke Dashboard.
-- Swap bottom sheet.
+- Reward overlay Swap dengan odometer gram, penghematan, confetti kontekstual, dan pencatatan hasil pilihan.
 - Navigasi Android dan web.
 
 AI, database, persistensi riwayat minuman, widget Android, dan penerapan desain final ke seluruh screen belum diimplementasikan. Katalog dan aturan Swap saat ini masih merupakan data demo lokal dari design handoff.
