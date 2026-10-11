@@ -234,16 +234,7 @@ class _ConfirmationSheet extends StatelessWidget {
                 const SizedBox(height: StevSpace.s5),
                 Center(
                   child: _ManualSearchButton(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context)
-                        ..hideCurrentSnackBar()
-                        ..showSnackBar(
-                          const SnackBar(
-                            content: Text('Pencarian manual segera hadir.'),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                    },
+                    onPressed: () => context.push('/manual'),
                   ),
                 ),
               ],

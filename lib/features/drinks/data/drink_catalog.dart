@@ -62,7 +62,7 @@ abstract final class DrinkCatalog {
     name: 'Teh melati kotak',
     grams: 18,
     estimated: false,
-    category: DrinkCategory.packaged,
+    category: DrinkCategory.tea,
     kind: DrinkKind.tea,
     photoAsset: 'assets/drinks/teh_melati_kotak.png',
     photoFit: BoxFit.contain,

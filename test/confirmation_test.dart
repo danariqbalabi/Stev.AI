@@ -56,9 +56,7 @@ void main() {
     expect(find.text('Waduh, lewat 18 g!', findRichText: true), findsOneWidget);
   });
 
-  testWidgets('manual search fallback explains that it is coming next', (
-    tester,
-  ) async {
+  testWidgets('manual search fallback opens the catalog', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -71,8 +69,9 @@ void main() {
     await tester.pumpWidget(StevAiApp(router: router));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('manualSearchButton')));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
-    expect(find.text('Pencarian manual segera hadir.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('manualSearchScreen')), findsOneWidget);
+    expect(find.text('Cari manual'), findsOneWidget);
   });
 }
