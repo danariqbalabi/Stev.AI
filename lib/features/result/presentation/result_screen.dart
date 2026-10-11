@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../shared/widgets/placeholder_notice.dart';
+import '../../drinks/domain/drink.dart';
 import '../../swap/presentation/swap_sheet.dart';
 
 class ResultScreen extends StatelessWidget {
-  const ResultScreen({super.key});
+  const ResultScreen({super.key, required this.drink});
+
+  final Drink drink;
 
   @override
   Widget build(BuildContext context) {
@@ -28,18 +31,22 @@ class ResultScreen extends StatelessWidget {
                 child: Column(
                   children: [
                     Text(
-                      'Es kopi susu',
+                      drink.name,
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      '24 g',
+                      DrinkSelection(drink: drink).displayGrams,
                       style: Theme.of(context).textTheme.displayLarge?.copyWith(
                         fontWeight: FontWeight.w800,
                         color: colorScheme.onErrorContainer,
                       ),
                     ),
-                    const Text('estimasi gula · data demo'),
+                    Text(
+                      drink.estimated
+                          ? 'estimasi gula · data demo'
+                          : 'sesuai label · data demo',
+                    ),
                   ],
                 ),
               ),

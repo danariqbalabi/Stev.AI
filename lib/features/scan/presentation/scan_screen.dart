@@ -368,7 +368,7 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
         const SizedBox(height: 16),
         FilledButton.icon(
           key: const ValueKey('usePhotoButton'),
-          onPressed: () => context.push('/confirmation'),
+          onPressed: () => context.push('/confirmation', extra: _photoBytes),
           icon: const Icon(Icons.check),
           label: const Text('Gunakan foto'),
         ),

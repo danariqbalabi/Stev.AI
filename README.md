@@ -63,7 +63,7 @@ Saat ini repository berisi alur MVP awal yang dapat diklik:
 - Kamera Android/Web dengan preview hasil foto.
 - Fallback pemilihan gambar dari galeri/file.
 - State izin ditolak, kamera tidak tersedia, dan coba lagi.
-- Konfirmasi minuman.
+- Konfirmasi minuman sesuai design handoff dengan foto hasil scan, tiga kandidat katalog, dan penanda kandidat paling cocok.
 - Hasil kandungan gula.
 - Swap bottom sheet.
 - Navigasi Android dan web.
