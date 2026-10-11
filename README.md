@@ -57,6 +57,9 @@ Saat ini repository berisi alur MVP awal yang dapat diklik:
 - Komponen dasar reusable: logo, maskot, icon, button, glass card, aura, spoon meter, dan level gula.
 - Onboarding first-launch, profil singkat, dan penyimpanan preferensi lokal.
 - Dashboard final dengan week strip, meter sendok gula, riwayat minuman, dan tab bar.
+- Katalog terpusat berisi 10 minuman dari design handoff beserta foto, kategori, jenis, dan kandungan gulanya.
+- State log minuman harian yang menghitung total secara dinamis dan mengganti entri produk yang sama.
+- Aturan Swap terpusat untuk level gula minuman non-kemasan dan alternatif produk kemasan yang tersedia.
 - Kamera Android/Web dengan preview hasil foto.
 - Fallback pemilihan gambar dari galeri/file.
 - State izin ditolak, kamera tidak tersedia, dan coba lagi.
@@ -65,7 +68,7 @@ Saat ini repository berisi alur MVP awal yang dapat diklik:
 - Swap bottom sheet.
 - Navigasi Android dan web.
 
-AI, database, penyimpanan riwayat minuman, widget Android, dan penerapan desain final ke seluruh screen belum diimplementasikan. Seluruh tebakan, angka, dan minuman setelah foto diambil masih merupakan data demo.
+AI, database, persistensi riwayat minuman, widget Android, dan penerapan desain final ke seluruh screen belum diimplementasikan. Katalog dan aturan Swap saat ini masih merupakan data demo lokal dari design handoff.
 
 ## Design system
 
