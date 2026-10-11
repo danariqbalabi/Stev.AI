@@ -24,13 +24,15 @@ void main() {
     // continues from the route that receives a captured image.
     appRouter.go('/confirmation');
     await tester.pumpAndSettle();
-    expect(find.text('Konfirmasi minuman'), findsOneWidget);
+    expect(find.text('Ini minuman apa?'), findsOneWidget);
+    expect(find.text('Pilih yang paling cocok'), findsOneWidget);
 
     await tester.drag(find.byType(Scrollable), const Offset(0, -500));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('showResultButton')));
     await tester.pumpAndSettle();
-    expect(find.text('24 g'), findsOneWidget);
+    expect(find.text('Kopi susu kaleng Nescafe'), findsOneWidget);
+    expect(find.text('30 g'), findsOneWidget);
 
     await tester.drag(find.byType(Scrollable), const Offset(0, -400));
     await tester.pumpAndSettle();
