@@ -64,7 +64,7 @@ Saat ini repository berisi alur MVP awal yang dapat diklik:
 - Fallback pemilihan gambar dari galeri/file.
 - State izin ditolak, kamera tidak tersedia, dan coba lagi.
 - Konfirmasi minuman sesuai design handoff dengan foto hasil scan, tiga kandidat katalog, dan penanda kandidat paling cocok.
-- Hasil kandungan gula.
+- Hasil kandungan gula sesuai design handoff dengan level picker, visual sendok, status batas harian, dan pencatatan ke Dashboard.
 - Swap bottom sheet.
 - Navigasi Android dan web.
 

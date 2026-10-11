@@ -30,14 +30,16 @@ void main() {
     await tester.drag(find.byType(Scrollable), const Offset(0, -500));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('showResultButton')));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
     expect(find.text('Kopi susu kaleng Nescafe'), findsOneWidget);
     expect(find.text('30 g'), findsOneWidget);
 
     await tester.drag(find.byType(Scrollable), const Offset(0, -400));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 300));
     await tester.tap(find.byKey(const ValueKey('swapButton')));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
     expect(find.text('Swap ke yang lebih ringan'), findsOneWidget);
   });
 }
