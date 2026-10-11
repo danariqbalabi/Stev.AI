@@ -48,11 +48,12 @@ void main() {
     await tester.tap(
       find.byKey(const ValueKey('guess-es-kopi-susu-gula-aren')),
     );
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
 
     expect(find.text('Es kopi susu gula aren'), findsOneWidget);
     expect(find.text('≈36 g'), findsOneWidget);
-    expect(find.text('estimasi gula · data demo'), findsOneWidget);
+    expect(find.text('Waduh, lewat 18 g!', findRichText: true), findsOneWidget);
   });
 
   testWidgets('manual search fallback explains that it is coming next', (

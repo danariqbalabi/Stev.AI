@@ -76,7 +76,6 @@ abstract final class DrinkCatalog {
     category: DrinkCategory.packaged,
     kind: DrinkKind.coffee,
     photoAsset: 'assets/drinks/kopi_susu_kaleng_nescafe.png',
-    photoFit: BoxFit.contain,
   );
 
   static const susuCokelatKotakUltra = Drink(

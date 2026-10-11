@@ -22,16 +22,14 @@ abstract final class DrinkSwap {
     photoFit: BoxFit.contain,
   );
 
-  static const _nescafeLess = Drink(
-    id: 'kopi-susu-kaleng-nescafe-less-sugar',
-    logIdentityId: 'kopi-susu-kaleng-nescafe',
-    name: 'Kopi susu kaleng Nescafe',
+  static const _arenLess = Drink(
+    id: 'es-kopi-susu-gula-aren-less',
+    name: 'Es kopi susu gula aren, less sugar',
     grams: 22,
-    estimated: false,
-    category: DrinkCategory.packaged,
+    estimated: true,
+    category: DrinkCategory.coffee,
     kind: DrinkKind.coffee,
-    photoAsset: 'assets/drinks/kopi_susu_kaleng_nescafe.png',
-    photoFit: BoxFit.contain,
+    photoAsset: 'assets/drinks/es_kopi_susu_gula_aren.png',
   );
 
   static List<SwapOption> optionsFor(DrinkSelection current) {
@@ -40,7 +38,7 @@ abstract final class DrinkSwap {
 
     final alternative = switch (current.drink.id) {
       'teh-melati-kotak' => _tehMelatiLess,
-      'kopi-susu-kaleng-nescafe' => _nescafeLess,
+      'kopi-susu-kaleng-nescafe' => _arenLess,
       _ => null,
     };
     if (alternative == null || alternative.kind != current.drink.kind) {
@@ -58,7 +56,7 @@ abstract final class DrinkSwap {
   static List<SwapOption> _levelOptions(DrinkSelection current) {
     final level = current.sugarLevel ?? SugarLevel.normal;
     final targetLevels = switch (level) {
-      SugarLevel.normal => const [SugarLevel.noSugar, SugarLevel.less],
+      SugarLevel.normal => const [SugarLevel.less],
       SugarLevel.less => const [SugarLevel.noSugar],
       SugarLevel.noSugar => const <SugarLevel>[],
     };
