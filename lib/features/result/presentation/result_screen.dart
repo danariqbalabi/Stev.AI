@@ -9,7 +9,7 @@ import '../../../shared/widgets/stev_design_system.dart';
 import '../../drinks/application/drink_log_controller.dart';
 import '../../drinks/domain/drink.dart';
 import '../../drinks/domain/drink_swap.dart';
-import '../../swap/presentation/swap_sheet.dart';
+import '../../swap/presentation/swap_reward_overlay.dart';
 
 class ResultScreen extends StatefulWidget {
   const ResultScreen({super.key, required this.drink});
@@ -39,7 +39,9 @@ class _ResultScreenState extends State<ResultScreen> {
 
   void _openSwap() {
     HapticFeedback.lightImpact();
-    showSwapSheet(context);
+    final options = DrinkSwap.optionsFor(_selection);
+    if (options.isEmpty) return;
+    showSwapReward(context, current: _selection, option: options.first);
   }
 
   @override
