@@ -275,6 +275,11 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
             _isPickingImage ? 'Membuka galeri...' : 'Pilih dari galeri',
           ),
         ),
+        TextButton(
+          key: const ValueKey('manualSearchLink'),
+          onPressed: () => context.push('/manual'),
+          child: const Text('Cari manual'),
+        ),
       ],
     );
   }

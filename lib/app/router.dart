@@ -8,6 +8,7 @@ import '../features/confirmation/presentation/confirmation_screen.dart';
 import '../features/dashboard/presentation/dashboard_screen.dart';
 import '../features/drinks/data/drink_catalog.dart';
 import '../features/drinks/domain/drink.dart';
+import '../features/manual_search/presentation/manual_search_screen.dart';
 import '../features/onboarding/presentation/onboarding_profile_screen.dart';
 import '../features/onboarding/presentation/onboarding_welcome_screen.dart';
 import '../features/result/presentation/result_screen.dart';
@@ -29,6 +30,11 @@ GoRouter createAppRouter({required bool onboardingComplete}) {
       ),
       GoRoute(path: '/', builder: (context, state) => const DashboardScreen()),
       GoRoute(path: '/scan', builder: (context, state) => const ScanScreen()),
+      GoRoute(
+        path: '/manual',
+        pageBuilder: (context, state) =>
+            _fadePage(state: state, child: const ManualSearchScreen()),
+      ),
       GoRoute(
         path: '/confirmation',
         builder: (context, state) => ConfirmationScreen(
