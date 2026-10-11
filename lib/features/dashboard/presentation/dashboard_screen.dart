@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/stev_tokens.dart';
 import '../../../shared/widgets/stev_design_system.dart';
-import '../data/dashboard_demo_data.dart';
+import '../../drinks/application/drink_log_controller.dart';
 import 'widgets/daily_sugar_card.dart';
 import 'widgets/drink_row.dart';
 import 'widgets/week_strip.dart';
@@ -11,11 +11,10 @@ import 'widgets/week_strip.dart';
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
-  double get _totalGrams =>
-      dashboardDemoDrinks.fold(0, (total, drink) => total + drink.grams);
-
   @override
   Widget build(BuildContext context) {
+    final drinkLog = DrinkLogScope.watch(context);
+
     return Scaffold(
       key: const ValueKey('dashboardScreen'),
       extendBody: true,
@@ -37,17 +36,13 @@ class DashboardScreen extends StatelessWidget {
               const SizedBox(height: StevSpace.s5),
               const WeekStrip(),
               const SizedBox(height: StevSpace.s5),
-              DailySugarCard(totalGrams: _totalGrams),
+              DailySugarCard(totalGrams: drinkLog.totalGrams),
               const SizedBox(height: StevSpace.s10),
               Text('Hari ini', style: StevType.heading),
               const SizedBox(height: 14),
-              for (
-                var index = 0;
-                index < dashboardDemoDrinks.length;
-                index++
-              ) ...[
+              for (var index = 0; index < drinkLog.entries.length; index++) ...[
                 if (index > 0) const SizedBox(height: StevSpace.s3),
-                DrinkRow(drink: dashboardDemoDrinks[index]),
+                DrinkRow(drink: drinkLog.entries[index]),
               ],
             ],
           ),
