@@ -13,6 +13,7 @@ import '../features/onboarding/presentation/onboarding_profile_screen.dart';
 import '../features/onboarding/presentation/onboarding_welcome_screen.dart';
 import '../features/result/presentation/result_screen.dart';
 import '../features/scan/presentation/scan_screen.dart';
+import '../features/weekly/presentation/weekly_screen.dart';
 
 GoRouter createAppRouter({required bool onboardingComplete}) {
   return GoRouter(
@@ -29,6 +30,11 @@ GoRouter createAppRouter({required bool onboardingComplete}) {
             _fadePage(state: state, child: const OnboardingProfileScreen()),
       ),
       GoRoute(path: '/', builder: (context, state) => const DashboardScreen()),
+      GoRoute(
+        path: '/weekly',
+        pageBuilder: (context, state) =>
+            _fadePage(state: state, child: const WeeklyScreen()),
+      ),
       GoRoute(path: '/scan', builder: (context, state) => const ScanScreen()),
       GoRoute(
         path: '/manual',
