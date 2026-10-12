@@ -92,4 +92,29 @@ void main() {
     addTearDown(controller.dispose);
     expect(controller.entries, isEmpty);
   });
+
+  test('weekly summary combines daily totals and swap savings', () async {
+    SharedPreferences.setMockInitialValues({});
+    final storage = DrinkLogPreferences();
+    await storage.write(DateTime(2026, 10, 5), const [
+      DrinkSelection(drink: DrinkCatalog.tehMelatiKotak),
+    ], savedGrams: 8);
+    await storage.write(DateTime(2026, 10, 6), const [
+      DrinkSelection(drink: DrinkCatalog.tehMelatiKotak),
+      DrinkSelection(drink: DrinkCatalog.kopiSusuKalengNescafe),
+    ], savedGrams: 14);
+    final controller = await DrinkLogController.persistent(
+      preferences: storage,
+      now: DateTime(2026, 10, 6),
+    );
+    addTearDown(controller.dispose);
+
+    final summary = await controller.loadWeeklySummary();
+
+    expect(summary.days, hasLength(7));
+    expect(summary.days[0].grams, 18);
+    expect(summary.days[1].grams, 48);
+    expect(summary.days[2].grams, isNull);
+    expect(summary.savedGrams, 22);
+  });
 }

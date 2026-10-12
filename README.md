@@ -67,9 +67,9 @@ Saat ini repository berisi alur MVP awal yang dapat diklik:
 - Hasil kandungan gula sesuai design handoff dengan level picker, visual sendok, status batas harian, dan pencatatan ke Dashboard.
 - Reward overlay Swap dengan odometer gram, penghematan, confetti kontekstual, dan pencatatan hasil pilihan.
 - Pencarian manual dengan filter kategori dan katalog 10 minuman yang terhubung ke Result.
-- Dashboard mingguan dengan ringkasan penghematan, grafik konsumsi tujuh hari, dan penanda batas 50 gram.
+- Dashboard mingguan dari log lokal dengan ringkasan penghematan Swap, grafik konsumsi tujuh hari, dan penanda batas 50 gram.
 - Form minuman custom dengan input sendok gula, pump sirup, preview estimasi, dan pencatatan ke Dashboard.
-- Persistensi log minuman lokal per tanggal, termasuk level gula dan minuman custom.
+- Persistensi log minuman lokal per tanggal, termasuk level gula, minuman custom, dan penghematan Swap.
 - Navigasi Android dan web.
 
 AI, database cloud, widget Android, dan penerapan desain final ke seluruh screen belum diimplementasikan. Katalog dan aturan Swap saat ini masih merupakan data demo lokal dari design handoff.

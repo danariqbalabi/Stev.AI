@@ -5,12 +5,21 @@ import 'package:flutter/widgets.dart';
 import '../data/drink_catalog.dart';
 import '../data/drink_log_preferences.dart';
 import '../domain/drink.dart';
+import '../../weekly/domain/weekly_sugar_summary.dart';
 
 class DrinkLogController extends ChangeNotifier {
-  DrinkLogController({
-    Iterable<DrinkSelection> initialEntries = const [],
-    this._onEntriesChanged,
-  }) : _entries = List.of(initialEntries);
+  DrinkLogController({Iterable<DrinkSelection> initialEntries = const []})
+    : _entries = List.of(initialEntries),
+      _preferences = null,
+      _today = null,
+      _savedGrams = 0;
+
+  DrinkLogController._persistent(
+    Iterable<DrinkSelection> initialEntries,
+    this._preferences,
+    this._today,
+    this._savedGrams,
+  ) : _entries = List.of(initialEntries);
 
   static const demoEntries = <DrinkSelection>[
     DrinkSelection(drink: DrinkCatalog.tehMelatiKotak),
@@ -26,25 +35,30 @@ class DrinkLogController extends ChangeNotifier {
   }) async {
     final storage = preferences ?? DrinkLogPreferences();
     final today = now ?? DateTime.now();
-    final storedEntries = await storage.read(today);
+    final storedDay = await storage.readDay(today);
     final lastActiveDate = await storage.readLastActiveDate();
     final isFirstPersistentLaunch = lastActiveDate == null;
     final initialEntries =
-        storedEntries ??
+        storedDay?.entries ??
         (isFirstPersistentLaunch ? demoEntries : const <DrinkSelection>[]);
+    final savedGrams = storedDay?.savedGrams ?? 0;
 
-    if (storedEntries == null) {
-      await storage.write(today, initialEntries);
+    if (storedDay == null) {
+      await storage.write(today, initialEntries, savedGrams: savedGrams);
     }
 
-    return DrinkLogController(
-      initialEntries: initialEntries,
-      onEntriesChanged: (entries) => storage.write(today, entries),
+    return DrinkLogController._persistent(
+      initialEntries,
+      storage,
+      today,
+      savedGrams,
     );
   }
 
   final List<DrinkSelection> _entries;
-  final Future<void> Function(List<DrinkSelection> entries)? _onEntriesChanged;
+  final DrinkLogPreferences? _preferences;
+  final DateTime? _today;
+  double _savedGrams;
   Future<void> _pendingWrite = Future.value();
 
   UnmodifiableListView<DrinkSelection> get entries =>
@@ -53,7 +67,18 @@ class DrinkLogController extends ChangeNotifier {
   double get totalGrams =>
       _entries.fold(0, (total, selection) => total + selection.grams);
 
+  double get savedGrams => _savedGrams;
+
   void log(DrinkSelection selection) {
+    _logSelection(selection);
+  }
+
+  void logSwap(DrinkSelection selection, {required double savedGrams}) {
+    _savedGrams += savedGrams.clamp(0, double.infinity);
+    _logSelection(selection);
+  }
+
+  void _logSelection(DrinkSelection selection) {
     _entries.removeWhere((entry) => entry.identityId == selection.identityId);
     _entries.insert(0, selection);
     notifyListeners();
@@ -78,12 +103,53 @@ class DrinkLogController extends ChangeNotifier {
 
   Future<void> flush() => _pendingWrite;
 
+  Future<WeeklySugarSummary> loadWeeklySummary({DateTime? anchor}) async {
+    await _pendingWrite;
+    final target = anchor ?? _today ?? DateTime.now();
+    final monday = DateTime(
+      target.year,
+      target.month,
+      target.day - (target.weekday - DateTime.monday),
+    );
+    final preferences = _preferences;
+    if (preferences == null) {
+      const demoGrams = <double?>[38, 55, 41, 42, null, null, null];
+      return WeeklySugarSummary(
+        days: List.generate(
+          7,
+          (index) => DailySugarSummary(
+            date: monday.add(Duration(days: index)),
+            grams: demoGrams[index],
+          ),
+        ),
+        savedGrams: 46,
+      );
+    }
+
+    final days = <DailySugarSummary>[];
+    var weeklySavedGrams = 0.0;
+    for (var index = 0; index < 7; index++) {
+      final date = monday.add(Duration(days: index));
+      final storedDay = await preferences.readDay(date);
+      days.add(DailySugarSummary(date: date, grams: storedDay?.totalGrams));
+      weeklySavedGrams += storedDay?.savedGrams ?? 0;
+    }
+    return WeeklySugarSummary(
+      days: List.unmodifiable(days),
+      savedGrams: weeklySavedGrams,
+    );
+  }
+
   void _persist() {
-    final callback = _onEntriesChanged;
-    if (callback == null) return;
+    final preferences = _preferences;
+    final today = _today;
+    if (preferences == null || today == null) return;
     final snapshot = List<DrinkSelection>.unmodifiable(_entries);
+    final savedSnapshot = _savedGrams;
     _pendingWrite = _pendingWrite
-        .then((_) => callback(snapshot))
+        .then(
+          (_) => preferences.write(today, snapshot, savedGrams: savedSnapshot),
+        )
         .onError((_, _) {});
   }
 }

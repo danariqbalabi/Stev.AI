@@ -5,35 +5,74 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../domain/drink.dart';
 
+class StoredDrinkLog {
+  StoredDrinkLog({
+    required Iterable<DrinkSelection> entries,
+    required this.savedGrams,
+  }) : entries = List.unmodifiable(entries);
+
+  final List<DrinkSelection> entries;
+  final double savedGrams;
+
+  double get totalGrams =>
+      entries.fold(0, (total, selection) => total + selection.grams);
+}
+
 class DrinkLogPreferences {
   static const _keyPrefix = 'stev-drink-log-v1';
   static const lastActiveDateKey = 'stev-drink-log-last-active-date';
 
   Future<List<DrinkSelection>?> read(DateTime date) async {
+    return (await readDay(date))?.entries;
+  }
+
+  Future<StoredDrinkLog?> readDay(DateTime date) async {
     final preferences = await SharedPreferences.getInstance();
     final encoded = preferences.getString(_keyFor(date));
     if (encoded == null) return null;
 
     try {
       final decoded = jsonDecode(encoded);
-      if (decoded is! List) return null;
+      final List<dynamic> rawEntries;
+      var savedGrams = 0.0;
+      if (decoded is List) {
+        // v1 migration: the first persistence format stored only the entries.
+        rawEntries = decoded;
+      } else if (decoded is Map) {
+        final object = Map<String, Object?>.from(decoded);
+        final entriesValue = object['entries'];
+        if (entriesValue is! List) return null;
+        rawEntries = entriesValue;
+        if (object['savedGrams'] case final num value) {
+          savedGrams = value.toDouble().clamp(0, double.infinity);
+        }
+      } else {
+        return null;
+      }
 
       final entries = <DrinkSelection>[];
-      for (final value in decoded) {
+      for (final value in rawEntries) {
         if (value is! Map) continue;
         final selection = _selectionFromJson(Map<String, Object?>.from(value));
         if (selection != null) entries.add(selection);
       }
-      return entries;
-    } on FormatException {
+      return StoredDrinkLog(entries: entries, savedGrams: savedGrams);
+    } catch (_) {
       return null;
     }
   }
 
-  Future<void> write(DateTime date, Iterable<DrinkSelection> entries) async {
+  Future<void> write(
+    DateTime date,
+    Iterable<DrinkSelection> entries, {
+    double savedGrams = 0,
+  }) async {
     final preferences = await SharedPreferences.getInstance();
     final normalizedDate = _formatDate(date);
-    final encoded = jsonEncode(entries.map(_selectionToJson).toList());
+    final encoded = jsonEncode({
+      'entries': entries.map(_selectionToJson).toList(),
+      'savedGrams': savedGrams.clamp(0, double.infinity),
+    });
     await preferences.setString(_keyFor(date), encoded);
     await preferences.setString(lastActiveDateKey, normalizedDate);
   }

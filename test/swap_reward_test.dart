@@ -61,6 +61,7 @@ void main() {
     expect(find.text('22'), findsOneWidget);
     expect(find.text('Es kopi susu gula aren'), findsOneWidget);
     expect(log.entries.single.sugarLevel?.name, 'less');
+    expect(log.savedGrams, 14);
   });
 
   testWidgets('saving below one spoon does not show confetti', (tester) async {

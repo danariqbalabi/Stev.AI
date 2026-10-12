@@ -77,7 +77,8 @@ class _SwapRewardOverlayState extends State<SwapRewardOverlay>
     if (_saving) return;
     _saving = true;
     final router = GoRouter.of(context);
-    DrinkLogScope.read(context).log(widget.option.selection);
+    DrinkLogScope.read(context)
+        .logSwap(widget.option.selection, savedGrams: widget.option.savedGrams);
     Navigator.of(context, rootNavigator: true).pop();
     router.go('/');
   }

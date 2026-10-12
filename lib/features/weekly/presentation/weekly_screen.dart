@@ -3,20 +3,29 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/stev_tokens.dart';
 import '../../../shared/widgets/stev_design_system.dart';
+import '../../drinks/application/drink_log_controller.dart';
+import '../domain/weekly_sugar_summary.dart';
 
-class WeeklyScreen extends StatelessWidget {
+class WeeklyScreen extends StatefulWidget {
   const WeeklyScreen({super.key});
 
-  static const savedGrams = 46;
-  static const days = <WeeklySugarDay>[
-    WeeklySugarDay(label: 'Sen', grams: 38),
-    WeeklySugarDay(label: 'Sel', grams: 55),
-    WeeklySugarDay(label: 'Rab', grams: 41),
-    WeeklySugarDay(label: 'Kam', grams: 42),
-    WeeklySugarDay(label: 'Jum'),
-    WeeklySugarDay(label: 'Sab'),
-    WeeklySugarDay(label: 'Min'),
-  ];
+  @override
+  State<WeeklyScreen> createState() => _WeeklyScreenState();
+}
+
+class _WeeklyScreenState extends State<WeeklyScreen> {
+  DrinkLogController? _controller;
+  Future<WeeklySugarSummary>? _summary;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final controller = DrinkLogScope.read(context);
+    if (!identical(controller, _controller)) {
+      _controller = controller;
+      _summary = controller.loadWeeklySummary();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,23 +35,37 @@ class WeeklyScreen extends StatelessWidget {
       body: AuraBackground(
         child: SafeArea(
           bottom: false,
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(
-              StevSpace.s5,
-              StevSpace.s4,
-              StevSpace.s5,
-              128,
-            ),
-            children: const [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: StevLogo(markSize: 30),
-              ),
-              SizedBox(height: StevSpace.s10),
-              _WeeklySummary(savedGrams: savedGrams),
-              SizedBox(height: 38),
-              _WeeklyChartCard(days: days),
-            ],
+          child: FutureBuilder<WeeklySugarSummary>(
+            future: _summary,
+            builder: (context, snapshot) {
+              final summary = snapshot.data;
+              if (summary == null) {
+                return const Center(
+                  child: CircularProgressIndicator(
+                    key: ValueKey('weeklyLoading'),
+                    color: StevColors.ink,
+                  ),
+                );
+              }
+              return ListView(
+                padding: const EdgeInsets.fromLTRB(
+                  StevSpace.s5,
+                  StevSpace.s4,
+                  StevSpace.s5,
+                  128,
+                ),
+                children: [
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: StevLogo(markSize: 30),
+                  ),
+                  const SizedBox(height: StevSpace.s10),
+                  _WeeklySummary(savedGrams: summary.savedGrams),
+                  const SizedBox(height: 38),
+                  _WeeklyChartCard(days: summary.days),
+                ],
+              );
+            },
           ),
         ),
       ),
@@ -56,17 +79,10 @@ class WeeklyScreen extends StatelessWidget {
   }
 }
 
-class WeeklySugarDay {
-  const WeeklySugarDay({required this.label, this.grams});
-
-  final String label;
-  final double? grams;
-}
-
 class _WeeklySummary extends StatelessWidget {
   const _WeeklySummary({required this.savedGrams});
 
-  final int savedGrams;
+  final double savedGrams;
 
   @override
   Widget build(BuildContext context) {
@@ -80,7 +96,7 @@ class _WeeklySummary extends StatelessWidget {
           textBaseline: TextBaseline.alphabetic,
           children: [
             Text(
-              '$savedGrams',
+              _numberLabel(savedGrams),
               key: const ValueKey('weeklySavedGrams'),
               style: StevType.number.copyWith(fontFeatures: StevType.tabular),
             ),
@@ -104,7 +120,7 @@ class _WeeklySummary extends StatelessWidget {
 class _WeeklyChartCard extends StatelessWidget {
   const _WeeklyChartCard({required this.days});
 
-  final List<WeeklySugarDay> days;
+  final List<DailySugarSummary> days;
 
   @override
   Widget build(BuildContext context) {
@@ -138,7 +154,7 @@ class _WeeklyChartCard extends StatelessWidget {
 class _WeeklyBarChart extends StatefulWidget {
   const _WeeklyBarChart({required this.days});
 
-  final List<WeeklySugarDay> days;
+  final List<DailySugarSummary> days;
 
   @override
   State<_WeeklyBarChart> createState() => _WeeklyBarChartState();
@@ -182,9 +198,15 @@ class _WeeklyBarChartState extends State<_WeeklyBarChart>
 
   @override
   Widget build(BuildContext context) {
-    const semanticsLabel =
-        'Gula harian: Senin 38 gram, Selasa 55 gram, Rabu 41 gram, '
-        'Kamis 42 gram, Jumat sampai Minggu belum ada data. Batas 50 gram.';
+    final dayDescriptions = widget.days
+        .map((day) {
+          final grams = day.grams;
+          return grams == null
+              ? '${_longDayLabel(day.date)} belum ada data'
+              : '${_longDayLabel(day.date)} ${_numberLabel(grams)} gram';
+        })
+        .join(', ');
+    final semanticsLabel = 'Gula harian: $dayDescriptions. Batas 50 gram.';
 
     return Semantics(
       label: semanticsLabel,
@@ -243,7 +265,7 @@ class _DayBar extends StatelessWidget {
     required this.animation,
   });
 
-  final WeeklySugarDay day;
+  final DailySugarSummary day;
   final double trackHeight;
   final double maximumGrams;
   final Animation<double> animation;
@@ -285,10 +307,32 @@ class _DayBar extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
-        Text(day.label, style: StevType.micro.copyWith(color: StevColors.ink2)),
+        Text(
+          _shortDayLabel(day.date),
+          style: StevType.micro.copyWith(color: StevColors.ink2),
+        ),
       ],
     );
   }
+}
+
+const _shortDayLabels = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+const _longDayLabels = [
+  'Senin',
+  'Selasa',
+  'Rabu',
+  'Kamis',
+  'Jumat',
+  'Sabtu',
+  'Minggu',
+];
+
+String _shortDayLabel(DateTime date) => _shortDayLabels[date.weekday - 1];
+
+String _longDayLabel(DateTime date) => _longDayLabels[date.weekday - 1];
+
+String _numberLabel(double value) {
+  return value % 1 == 0 ? value.toStringAsFixed(0) : value.toStringAsFixed(1);
 }
 
 class _LimitLine extends StatelessWidget {
