@@ -1,8 +1,8 @@
 import 'package:flutter/painting.dart';
 
-enum DrinkCategory { packaged, coffee, tea, boba, juice }
+enum DrinkCategory { packaged, coffee, tea, boba, juice, custom }
 
-enum DrinkKind { tea, coffee, boba, juice, milk, soda, isotonic }
+enum DrinkKind { tea, coffee, boba, juice, milk, soda, isotonic, custom }
 
 enum SugarLevel {
   normal('Normal', 3),

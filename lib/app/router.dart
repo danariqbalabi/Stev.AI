@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../core/theme/stev_tokens.dart';
 import '../features/confirmation/presentation/confirmation_screen.dart';
+import '../features/custom_drink/presentation/custom_drink_screen.dart';
 import '../features/dashboard/presentation/dashboard_screen.dart';
 import '../features/drinks/data/drink_catalog.dart';
 import '../features/drinks/domain/drink.dart';
@@ -40,6 +41,11 @@ GoRouter createAppRouter({required bool onboardingComplete}) {
         path: '/manual',
         pageBuilder: (context, state) =>
             _fadePage(state: state, child: const ManualSearchScreen()),
+      ),
+      GoRoute(
+        path: '/manual/add',
+        pageBuilder: (context, state) =>
+            _fadePage(state: state, child: const CustomDrinkScreen()),
       ),
       GoRoute(
         path: '/confirmation',

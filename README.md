@@ -68,6 +68,7 @@ Saat ini repository berisi alur MVP awal yang dapat diklik:
 - Reward overlay Swap dengan odometer gram, penghematan, confetti kontekstual, dan pencatatan hasil pilihan.
 - Pencarian manual dengan filter kategori dan katalog 10 minuman yang terhubung ke Result.
 - Dashboard mingguan dengan ringkasan penghematan, grafik konsumsi tujuh hari, dan penanda batas 50 gram.
+- Form minuman custom dengan input sendok gula, pump sirup, preview estimasi, dan pencatatan ke Dashboard.
 - Navigasi Android dan web.
 
 AI, database, persistensi riwayat minuman, widget Android, dan penerapan desain final ke seluruh screen belum diimplementasikan. Katalog dan aturan Swap saat ini masih merupakan data demo lokal dari design handoff.
@@ -102,7 +103,6 @@ Font Onest disimpan lokal agar konsisten pada Android dan web. Lisensi SIL Open 
 
 - Home-screen widget Android.
 - Pencarian minuman manual.
-- Tambah minuman custom.
 - Personalisasi lanjutan berdasarkan profil onboarding.
 - Animasi penghematan gula dan confetti kontekstual.
 - Dukungan kategori makanan.
