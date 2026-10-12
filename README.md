@@ -69,9 +69,10 @@ Saat ini repository berisi alur MVP awal yang dapat diklik:
 - Pencarian manual dengan filter kategori dan katalog 10 minuman yang terhubung ke Result.
 - Dashboard mingguan dengan ringkasan penghematan, grafik konsumsi tujuh hari, dan penanda batas 50 gram.
 - Form minuman custom dengan input sendok gula, pump sirup, preview estimasi, dan pencatatan ke Dashboard.
+- Persistensi log minuman lokal per tanggal, termasuk level gula dan minuman custom.
 - Navigasi Android dan web.
 
-AI, database, persistensi riwayat minuman, widget Android, dan penerapan desain final ke seluruh screen belum diimplementasikan. Katalog dan aturan Swap saat ini masih merupakan data demo lokal dari design handoff.
+AI, database cloud, widget Android, dan penerapan desain final ke seluruh screen belum diimplementasikan. Katalog dan aturan Swap saat ini masih merupakan data demo lokal dari design handoff.
 
 ## Design system
 
@@ -115,7 +116,7 @@ Font Onest disimpan lokal agar konsisten pada Android dan web. Lisensi SIL Open 
 - `go_router` untuk navigasi.
 - `camera` untuk viewfinder dan pengambilan foto di Android/Web.
 - `image_picker` sebagai fallback galeri/file.
-- `shared_preferences` untuk status onboarding dan profil lokal.
+- `shared_preferences` untuk status onboarding, profil, dan log minuman harian lokal.
 - Android dan Flutter Web dari satu codebase.
 - Supabase untuk backend dan database pada tahap berikutnya.
 - Backend/Edge Function untuk menjaga API key layanan AI agar tidak tersimpan di client.
