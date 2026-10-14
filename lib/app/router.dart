@@ -16,6 +16,7 @@ import '../features/result/presentation/result_screen.dart';
 import '../features/recognition/domain/drink_recognition.dart';
 import '../features/risk_assessment/domain/risk_assessment.dart';
 import '../features/risk_assessment/presentation/risk_assessment_screen.dart';
+import '../features/risk_assessment/presentation/risk_invite_screen.dart';
 import '../features/risk_assessment/presentation/risk_result_screen.dart';
 import '../features/scan/presentation/scan_screen.dart';
 import '../features/weekly/presentation/weekly_screen.dart';
@@ -88,6 +89,17 @@ GoRouter createAppRouter({required bool onboardingComplete}) {
           }
           return RiskResultScreen(result: result);
         },
+      ),
+      GoRoute(
+        path: '/risk/invite',
+        pageBuilder: (context, state) => _fadePage(
+          state: state,
+          child: RiskInviteScreen(
+            subject: state.extra is RiskSubject
+                ? state.extra! as RiskSubject
+                : RiskSubject.parent,
+          ),
+        ),
       ),
     ],
   );
