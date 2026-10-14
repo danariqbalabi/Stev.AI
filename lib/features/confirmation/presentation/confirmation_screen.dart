@@ -9,11 +9,16 @@ import '../../drinks/data/drink_catalog.dart';
 import '../../drinks/domain/drink.dart';
 
 class ConfirmationScreen extends StatelessWidget {
-  const ConfirmationScreen({super.key, this.capturedPhoto});
+  const ConfirmationScreen({
+    super.key,
+    this.capturedPhoto,
+    this.candidates = fallbackGuesses,
+  });
 
   final Uint8List? capturedPhoto;
+  final List<Drink> candidates;
 
-  static const guesses = [
+  static const fallbackGuesses = [
     DrinkCatalog.kopiSusuKalengNescafe,
     DrinkCatalog.esKopiSusuGulaAren,
     DrinkCatalog.bobaMilkTea,
@@ -39,7 +44,11 @@ class ConfirmationScreen extends StatelessWidget {
                   right: 0,
                   top: sheetTop,
                   bottom: 0,
-                  child: const _ConfirmationSheet(),
+                  child: _ConfirmationSheet(
+                    guesses: candidates.isEmpty
+                        ? fallbackGuesses
+                        : candidates.take(3).toList(growable: false),
+                  ),
                 ),
                 const _PhotoHeader(),
               ],
@@ -181,7 +190,9 @@ class _PhotoBackButton extends StatelessWidget {
 }
 
 class _ConfirmationSheet extends StatelessWidget {
-  const _ConfirmationSheet();
+  const _ConfirmationSheet({required this.guesses});
+
+  final List<Drink> guesses;
 
   @override
   Widget build(BuildContext context) {
@@ -214,21 +225,15 @@ class _ConfirmationSheet extends StatelessWidget {
               children: [
                 Text('Pilih yang paling cocok', style: StevType.headingResult),
                 const SizedBox(height: StevSpace.s5),
-                for (
-                  var index = 0;
-                  index < ConfirmationScreen.guesses.length;
-                  index++
-                ) ...[
+                for (var index = 0; index < guesses.length; index++) ...[
                   _GuessCard(
                     key: index == 0
                         ? const ValueKey('showResultButton')
-                        : ValueKey(
-                            'guess-${ConfirmationScreen.guesses[index].id}',
-                          ),
-                    drink: ConfirmationScreen.guesses[index],
+                        : ValueKey('guess-${guesses[index].id}'),
+                    drink: guesses[index],
                     recommended: index == 0,
                   ),
-                  if (index < ConfirmationScreen.guesses.length - 1)
+                  if (index < guesses.length - 1)
                     const SizedBox(height: StevSpace.s3),
                 ],
                 const SizedBox(height: StevSpace.s5),
