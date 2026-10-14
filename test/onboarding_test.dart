@@ -41,6 +41,9 @@ void main() {
     expect(preferences.getBool(OnboardingPreferences.completeKey), isTrue);
     expect(preferences.getString(OnboardingPreferences.nameKey), 'Danan');
     expect(preferences.getString(OnboardingPreferences.drinkTimeKey), 'Sore');
+    final profile = await OnboardingPreferences.readProfile();
+    expect(profile.name, 'Danan');
+    expect(profile.drinkTime, 'Sore');
   });
 
   testWidgets('returning user starts on dashboard', (tester) async {
@@ -83,5 +86,18 @@ void main() {
     expect(preferences.getBool(OnboardingPreferences.completeKey), isTrue);
     expect(preferences.getString(OnboardingPreferences.nameKey), isNull);
     expect(preferences.getString(OnboardingPreferences.drinkTimeKey), isNull);
+  });
+
+  test('profile reader ignores blank names and unknown drink times', () async {
+    SharedPreferences.setMockInitialValues({
+      OnboardingPreferences.nameKey: '   ',
+      OnboardingPreferences.drinkTimeKey: 'Dini hari',
+    });
+
+    final profile = await OnboardingPreferences.readProfile();
+
+    expect(profile.hasDetails, isFalse);
+    expect(profile.name, isNull);
+    expect(profile.drinkTime, isNull);
   });
 }

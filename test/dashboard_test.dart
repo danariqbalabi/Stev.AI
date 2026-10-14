@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:steviai/app/app.dart';
 import 'package:steviai/app/router.dart';
+import 'package:steviai/features/onboarding/data/onboarding_preferences.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
   testWidgets('dashboard shows the reference design demo state', (
     tester,
   ) async {
@@ -44,5 +50,30 @@ void main() {
 
     expect(find.byKey(const ValueKey('weeklyScreen')), findsOneWidget);
     expect(find.text('Gula harian'), findsOneWidget);
+  });
+
+  testWidgets('dashboard personalizes greeting from onboarding profile', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({
+      OnboardingPreferences.nameKey: 'Danan',
+      OnboardingPreferences.drinkTimeKey: 'Sore',
+    });
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final router = createAppRouter(onboardingComplete: true);
+    addTearDown(router.dispose);
+    await tester.pumpWidget(StevAiApp(router: router));
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.byKey(const ValueKey('personalizedGreeting')), findsOneWidget);
+    expect(find.text('Halo, Danan!'), findsOneWidget);
+    expect(
+      find.text('Sore biasanya waktu kamu beli minum. Cek gulanya dulu, yuk.'),
+      findsOneWidget,
+    );
   });
 }

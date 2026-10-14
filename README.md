@@ -72,6 +72,7 @@ Saat ini repository berisi alur MVP awal yang dapat diklik:
 - Persistensi log minuman lokal per tanggal, termasuk level gula, minuman custom, dan penghematan Swap.
 - Home-screen widget Android yang menampilkan sisa gula hari ini dan membuka Scan dalam satu tap.
 - Alur pengenalan foto dengan state loading, error/retry, tiga kandidat dinamis, dan fallback pencarian manual. Adapter saat ini memakai hasil demo lokal dan siap diganti endpoint AI.
+- Personalisasi Dashboard dari nama dan waktu beli minuman yang disimpan saat onboarding.
 - Navigasi Android dan web.
 
 Endpoint AI nyata, database cloud, dan penerapan desain final ke seluruh screen belum diimplementasikan. Katalog, hasil recognition, dan aturan Swap saat ini masih merupakan data demo lokal dari design handoff.
@@ -105,7 +106,6 @@ Font Onest disimpan lokal agar konsisten pada Android dan web. Lisensi SIL Open 
 ### Roadmap
 
 - Endpoint AI untuk menggantikan adapter recognition demo.
-- Personalisasi lanjutan berdasarkan profil onboarding.
 - Animasi penghematan gula dan confetti kontekstual.
 - Dukungan kategori makanan.
 
