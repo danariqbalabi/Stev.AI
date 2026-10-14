@@ -13,6 +13,7 @@ import '../features/manual_search/presentation/manual_search_screen.dart';
 import '../features/onboarding/presentation/onboarding_profile_screen.dart';
 import '../features/onboarding/presentation/onboarding_welcome_screen.dart';
 import '../features/result/presentation/result_screen.dart';
+import '../features/recognition/domain/drink_recognition.dart';
 import '../features/scan/presentation/scan_screen.dart';
 import '../features/weekly/presentation/weekly_screen.dart';
 
@@ -49,11 +50,18 @@ GoRouter createAppRouter({required bool onboardingComplete}) {
       ),
       GoRoute(
         path: '/confirmation',
-        builder: (context, state) => ConfirmationScreen(
-          capturedPhoto: state.extra is Uint8List
-              ? state.extra! as Uint8List
-              : null,
-        ),
+        builder: (context, state) {
+          final recognition = state.extra is DrinkRecognitionResult
+              ? state.extra! as DrinkRecognitionResult
+              : null;
+          return ConfirmationScreen(
+            capturedPhoto:
+                recognition?.photoBytes ??
+                (state.extra is Uint8List ? state.extra! as Uint8List : null),
+            candidates:
+                recognition?.candidates ?? ConfirmationScreen.fallbackGuesses,
+          );
+        },
       ),
       GoRoute(
         path: '/result',

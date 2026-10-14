@@ -6,8 +6,16 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../recognition/data/demo_drink_recognition_service.dart';
+import '../../recognition/domain/drink_recognition.dart';
+
 class ScanScreen extends StatefulWidget {
-  const ScanScreen({super.key});
+  const ScanScreen({
+    super.key,
+    this.recognitionService = const DemoDrinkRecognitionService(),
+  });
+
+  final DrinkRecognitionService recognitionService;
 
   @override
   State<ScanScreen> createState() => _ScanScreenState();
@@ -22,6 +30,8 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
   bool _isInitializing = true;
   bool _isCapturing = false;
   bool _isPickingImage = false;
+  bool _isRecognizing = false;
+  String? _recognitionError;
 
   @override
   void initState() {
@@ -186,7 +196,10 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _retakePhoto() async {
-    setState(() => _photoBytes = null);
+    setState(() {
+      _photoBytes = null;
+      _recognitionError = null;
+    });
     final controller = _cameraController;
     if (controller != null && controller.value.isInitialized) {
       if (kIsWeb) {
@@ -199,6 +212,47 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
       }
     } else {
       await _initializeCamera();
+    }
+  }
+
+  Future<void> _recognizePhoto() async {
+    final photoBytes = _photoBytes;
+    if (photoBytes == null || _isRecognizing) return;
+
+    setState(() {
+      _isRecognizing = true;
+      _recognitionError = null;
+    });
+    try {
+      final candidates = await widget.recognitionService.identify(photoBytes);
+      if (!mounted) return;
+      if (candidates.isEmpty) {
+        throw const DrinkRecognitionException(
+          'Minuman belum dikenali. Coba foto lain atau cari manual.',
+        );
+      }
+
+      setState(() => _isRecognizing = false);
+      context.push(
+        '/confirmation',
+        extra: DrinkRecognitionResult(
+          photoBytes: photoBytes,
+          candidates: candidates,
+        ),
+      );
+    } on DrinkRecognitionException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isRecognizing = false;
+        _recognitionError = error.message;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isRecognizing = false;
+        _recognitionError =
+            'Stev belum bisa mengenali foto ini. Coba lagi atau cari manual.';
+      });
     }
   }
 
@@ -370,18 +424,39 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
           'Pastikan minuman terlihat jelas sebelum dilanjutkan.',
           textAlign: TextAlign.center,
         ),
+        if (_recognitionError case final error?) ...[
+          const SizedBox(height: 12),
+          Text(
+            error,
+            key: const ValueKey('recognitionError'),
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
+        ],
         const SizedBox(height: 16),
         FilledButton.icon(
           key: const ValueKey('usePhotoButton'),
-          onPressed: () => context.push('/confirmation', extra: _photoBytes),
-          icon: const Icon(Icons.check),
-          label: const Text('Gunakan foto'),
+          onPressed: _isRecognizing ? null : _recognizePhoto,
+          icon: _isRecognizing
+              ? const SizedBox.square(
+                  dimension: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.auto_awesome_outlined),
+          label: Text(
+            _isRecognizing ? 'Stev lagi mengenali...' : 'Kenali minuman',
+          ),
         ),
         TextButton.icon(
           key: const ValueKey('retakeButton'),
-          onPressed: _retakePhoto,
+          onPressed: _isRecognizing ? null : _retakePhoto,
           icon: const Icon(Icons.refresh),
           label: const Text('Foto ulang'),
+        ),
+        TextButton(
+          key: const ValueKey('previewManualSearchButton'),
+          onPressed: _isRecognizing ? null : () => context.push('/manual'),
+          child: const Text('Cari manual'),
         ),
       ],
     );
