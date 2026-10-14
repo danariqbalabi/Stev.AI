@@ -9,9 +9,12 @@ import '../../drinks/domain/drink.dart';
 import '../domain/drink_recognition.dart';
 
 class RemoteDrinkRecognitionService implements DrinkRecognitionService {
+  static const maxImageBytes = 8 * 1024 * 1024;
+
   RemoteDrinkRecognitionService({
     required this.endpoint,
     this.bearerToken,
+    this.apiKey,
     this.timeout = const Duration(seconds: 15),
     this.client,
     Iterable<Drink> catalog = DrinkCatalog.all,
@@ -19,6 +22,7 @@ class RemoteDrinkRecognitionService implements DrinkRecognitionService {
 
   final Uri endpoint;
   final String? bearerToken;
+  final String? apiKey;
   final Duration timeout;
   final http.Client? client;
   final List<Drink> catalog;
@@ -28,6 +32,11 @@ class RemoteDrinkRecognitionService implements DrinkRecognitionService {
     if (photoBytes.isEmpty) {
       throw const DrinkRecognitionException(
         'Foto kosong. Ambil ulang atau pilih gambar lain.',
+      );
+    }
+    if (photoBytes.length > maxImageBytes) {
+      throw const DrinkRecognitionException(
+        'Foto terlalu besar. Pilih foto berukuran maksimal 8 MB.',
       );
     }
 
@@ -40,10 +49,11 @@ class RemoteDrinkRecognitionService implements DrinkRecognitionService {
               'Content-Type': 'application/json',
               if (bearerToken case final token? when token.isNotEmpty)
                 'Authorization': 'Bearer $token',
+              if (apiKey case final key? when key.isNotEmpty) 'apikey': key,
             },
             body: jsonEncode({
               'imageBase64': base64Encode(photoBytes),
-              'mimeType': 'image/jpeg',
+              'mimeType': _detectMimeType(photoBytes),
               'catalogIds': catalog.map((drink) => drink.id).toList(),
             }),
           )
@@ -118,5 +128,21 @@ class RemoteDrinkRecognitionService implements DrinkRecognitionService {
       if (drink.id == id) return drink;
     }
     return null;
+  }
+
+  String _detectMimeType(Uint8List bytes) {
+    if (bytes.length >= 8 &&
+        bytes[0] == 0x89 &&
+        bytes[1] == 0x50 &&
+        bytes[2] == 0x4E &&
+        bytes[3] == 0x47) {
+      return 'image/png';
+    }
+    if (bytes.length >= 12 &&
+        String.fromCharCodes(bytes.sublist(0, 4)) == 'RIFF' &&
+        String.fromCharCodes(bytes.sublist(8, 12)) == 'WEBP') {
+      return 'image/webp';
+    }
+    return 'image/jpeg';
   }
 }
