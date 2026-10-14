@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/stev_tokens.dart';
 import '../../../../shared/widgets/stev_design_system.dart';
+import '../../../../shared/widgets/drink_photo.dart';
 import '../../../drinks/domain/drink.dart';
 
 class DrinkRow extends StatelessWidget {
@@ -27,15 +28,7 @@ class DrinkRow extends StatelessWidget {
                   dimension: StevSize.drinkRow,
                   child: ColoredBox(
                     color: StevColors.card,
-                    child: Image.asset(
-                      drink.drink.photoAsset,
-                      fit: drink.drink.photoFit,
-                      alignment: drink.drink.photoAlignment,
-                      errorBuilder: (context, error, stackTrace) => const Icon(
-                        Icons.local_drink_outlined,
-                        color: StevColors.ink2,
-                      ),
-                    ),
+                    child: DrinkPhoto(drink: drink.drink),
                   ),
                 ),
                 Expanded(

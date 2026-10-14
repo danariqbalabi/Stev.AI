@@ -105,6 +105,7 @@ class DrinkLogPreferences {
         'category': drink.category.name,
         'kind': drink.kind.name,
         'photoAsset': drink.photoAsset,
+        if (drink.photoUrl != null) 'photoUrl': drink.photoUrl,
         'photoFit': drink.photoFit == BoxFit.contain ? 'contain' : 'cover',
         'photoAlignmentX': drink.photoAlignment.x,
         'photoAlignmentY': drink.photoAlignment.y,
@@ -131,6 +132,7 @@ class DrinkLogPreferences {
     final grams = drinkJson['grams'];
     final estimated = drinkJson['estimated'];
     final photoAsset = drinkJson['photoAsset'];
+    final photoUrl = drinkJson['photoUrl'];
     final category = _enumByName(DrinkCategory.values, drinkJson['category']);
     final kind = _enumByName(DrinkKind.values, drinkJson['kind']);
     if (id is! String ||
@@ -170,6 +172,7 @@ class DrinkLogPreferences {
       category: category,
       kind: kind,
       photoAsset: photoAsset,
+      photoUrl: photoUrl is String ? photoUrl : null,
       levels: levels,
       logIdentityId: logIdentityId is String ? logIdentityId : null,
       photoFit: drinkJson['photoFit'] == 'contain'

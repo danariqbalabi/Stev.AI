@@ -1,4 +1,6 @@
 import '../domain/drink_recognition.dart';
+import '../../drinks/data/drink_catalog.dart';
+import '../../drinks/domain/drink.dart';
 import 'demo_drink_recognition_service.dart';
 import 'remote_drink_recognition_service.dart';
 
@@ -6,6 +8,7 @@ abstract final class DrinkRecognitionServiceFactory {
   static DrinkRecognitionService create({
     String endpoint = const String.fromEnvironment('STEV_RECOGNITION_ENDPOINT'),
     String token = const String.fromEnvironment('STEV_RECOGNITION_TOKEN'),
+    Iterable<Drink> catalog = DrinkCatalog.all,
   }) {
     final uri = Uri.tryParse(endpoint.trim());
     final isRemoteEndpoint =
@@ -18,6 +21,7 @@ abstract final class DrinkRecognitionServiceFactory {
     return RemoteDrinkRecognitionService(
       endpoint: uri,
       bearerToken: token.trim().isEmpty ? null : token.trim(),
+      catalog: catalog,
     );
   }
 }

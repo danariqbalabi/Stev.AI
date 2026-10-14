@@ -3,7 +3,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/stev_tokens.dart';
 import '../../../shared/widgets/stev_design_system.dart';
-import '../../drinks/data/drink_catalog.dart';
+import '../../../shared/widgets/drink_photo.dart';
+import '../../drinks/application/drink_catalog_controller.dart';
 import '../../drinks/domain/drink.dart';
 
 class ManualSearchScreen extends StatefulWidget {
@@ -25,9 +26,9 @@ class _ManualSearchScreenState extends State<ManualSearchScreen> {
     DrinkCategory.juice,
   ];
 
-  List<Drink> get _results {
+  List<Drink> _results(Iterable<Drink> catalog) {
     final query = _searchController.text.trim().toLowerCase();
-    return DrinkCatalog.all
+    return catalog
         .where((drink) {
           final matchesCategory =
               _selectedCategory == null || drink.category == _selectedCategory;
@@ -46,7 +47,8 @@ class _ManualSearchScreenState extends State<ManualSearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final results = _results;
+    final catalog = DrinkCatalogScope.of(context);
+    final results = _results(catalog.drinks);
 
     return Scaffold(
       key: const ValueKey('manualSearchScreen'),
@@ -93,6 +95,12 @@ class _ManualSearchScreenState extends State<ManualSearchScreen> {
                     ),
                   ),
                   const SizedBox(height: StevSpace.s5),
+                  if (catalog.isRefreshing) ...[
+                    const LinearProgressIndicator(
+                      key: ValueKey('catalogSyncIndicator'),
+                    ),
+                    const SizedBox(height: StevSpace.s3),
+                  ],
                   if (results.isEmpty)
                     const _EmptyResults()
                   else
@@ -279,11 +287,7 @@ class _ManualDrinkRow extends StatelessWidget {
                   dimension: StevSize.drinkRow,
                   child: ColoredBox(
                     color: StevColors.canvas,
-                    child: Image.asset(
-                      drink.photoAsset,
-                      fit: drink.photoFit,
-                      alignment: drink.photoAlignment,
-                    ),
+                    child: DrinkPhoto(drink: drink),
                   ),
                 ),
                 Expanded(

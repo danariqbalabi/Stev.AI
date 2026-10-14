@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:steviai/features/drinks/data/drink_catalog.dart';
+import 'package:steviai/features/drinks/domain/drink.dart';
 import 'package:steviai/features/recognition/data/demo_drink_recognition_service.dart';
 import 'package:steviai/features/recognition/data/drink_recognition_service_factory.dart';
 import 'package:steviai/features/recognition/data/remote_drink_recognition_service.dart';
@@ -12,6 +13,36 @@ import 'package:steviai/features/recognition/domain/drink_recognition.dart';
 
 void main() {
   group('RemoteDrinkRecognitionService', () {
+    test('uses and resolves IDs from an injected remote catalog', () async {
+      const remoteDrink = Drink(
+        id: 'remote-drink',
+        name: 'Remote drink',
+        grams: 8,
+        estimated: false,
+        category: DrinkCategory.packaged,
+        kind: DrinkKind.tea,
+      );
+      late Map<String, dynamic> requestBody;
+      final service = RemoteDrinkRecognitionService(
+        endpoint: Uri.parse('https://api.example.com/recognize'),
+        catalog: const [remoteDrink],
+        client: MockClient((request) async {
+          requestBody = jsonDecode(request.body) as Map<String, dynamic>;
+          return http.Response(
+            jsonEncode({
+              'candidates': ['remote-drink'],
+            }),
+            200,
+          );
+        }),
+      );
+
+      final candidates = await service.identify(Uint8List.fromList([1]));
+
+      expect(requestBody['catalogIds'], ['remote-drink']);
+      expect(candidates, [remoteDrink]);
+    });
+
     test('sends the image and maps up to three unique catalog IDs', () async {
       late http.Request capturedRequest;
       final client = MockClient((request) async {
