@@ -70,9 +70,10 @@ Saat ini repository berisi alur MVP awal yang dapat diklik:
 - Dashboard mingguan dari log lokal dengan ringkasan penghematan Swap, grafik konsumsi tujuh hari, dan penanda batas 50 gram.
 - Form minuman custom dengan input sendok gula, pump sirup, preview estimasi, dan pencatatan ke Dashboard.
 - Persistensi log minuman lokal per tanggal, termasuk level gula, minuman custom, dan penghematan Swap.
+- Home-screen widget Android yang menampilkan sisa gula hari ini dan membuka Scan dalam satu tap.
 - Navigasi Android dan web.
 
-AI, database cloud, widget Android, dan penerapan desain final ke seluruh screen belum diimplementasikan. Katalog dan aturan Swap saat ini masih merupakan data demo lokal dari design handoff.
+AI, database cloud, dan penerapan desain final ke seluruh screen belum diimplementasikan. Katalog dan aturan Swap saat ini masih merupakan data demo lokal dari design handoff.
 
 ## Design system
 
@@ -102,7 +103,6 @@ Font Onest disimpan lokal agar konsisten pada Android dan web. Lisensi SIL Open 
 
 ### Roadmap
 
-- Home-screen widget Android.
 - Pencarian minuman manual.
 - Personalisasi lanjutan berdasarkan profil onboarding.
 - Animasi penghematan gula dan confetti kontekstual.

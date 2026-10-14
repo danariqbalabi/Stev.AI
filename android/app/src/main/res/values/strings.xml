@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Stev.AI</string>
+    <string name="widget_brand">Stev.AI</string>
+    <string name="widget_default_remaining">50 g lagi</string>
+    <string name="widget_default_consumed">0 dari 50 g hari ini</string>
+    <string name="widget_scan">Scan minuman</string>
+</resources>

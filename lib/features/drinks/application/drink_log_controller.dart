@@ -81,24 +81,24 @@ class DrinkLogController extends ChangeNotifier {
   void _logSelection(DrinkSelection selection) {
     _entries.removeWhere((entry) => entry.identityId == selection.identityId);
     _entries.insert(0, selection);
-    notifyListeners();
     _persist();
+    notifyListeners();
   }
 
   void remove(String identityId) {
     final previousLength = _entries.length;
     _entries.removeWhere((entry) => entry.identityId == identityId);
     if (_entries.length != previousLength) {
-      notifyListeners();
       _persist();
+      notifyListeners();
     }
   }
 
   void clear() {
     if (_entries.isEmpty) return;
     _entries.clear();
-    notifyListeners();
     _persist();
+    notifyListeners();
   }
 
   Future<void> flush() => _pendingWrite;
