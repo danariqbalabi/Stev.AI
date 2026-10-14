@@ -6,16 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../../recognition/data/demo_drink_recognition_service.dart';
+import '../../recognition/data/drink_recognition_service_factory.dart';
 import '../../recognition/domain/drink_recognition.dart';
 
 class ScanScreen extends StatefulWidget {
-  const ScanScreen({
-    super.key,
-    this.recognitionService = const DemoDrinkRecognitionService(),
-  });
+  const ScanScreen({super.key, this.recognitionService});
 
-  final DrinkRecognitionService recognitionService;
+  final DrinkRecognitionService? recognitionService;
 
   @override
   State<ScanScreen> createState() => _ScanScreenState();
@@ -23,6 +20,8 @@ class ScanScreen extends StatefulWidget {
 
 class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
   final ImagePicker _imagePicker = ImagePicker();
+  late final DrinkRecognitionService _recognitionService =
+      widget.recognitionService ?? DrinkRecognitionServiceFactory.create();
 
   CameraController? _cameraController;
   Uint8List? _photoBytes;
@@ -224,7 +223,7 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
       _recognitionError = null;
     });
     try {
-      final candidates = await widget.recognitionService.identify(photoBytes);
+      final candidates = await _recognitionService.identify(photoBytes);
       if (!mounted) return;
       if (candidates.isEmpty) {
         throw const DrinkRecognitionException(

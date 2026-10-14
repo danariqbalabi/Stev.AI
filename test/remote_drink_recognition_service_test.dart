@@ -1,0 +1,137 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:steviai/features/drinks/data/drink_catalog.dart';
+import 'package:steviai/features/recognition/data/demo_drink_recognition_service.dart';
+import 'package:steviai/features/recognition/data/drink_recognition_service_factory.dart';
+import 'package:steviai/features/recognition/data/remote_drink_recognition_service.dart';
+import 'package:steviai/features/recognition/domain/drink_recognition.dart';
+
+void main() {
+  group('RemoteDrinkRecognitionService', () {
+    test('sends the image and maps up to three unique catalog IDs', () async {
+      late http.Request capturedRequest;
+      final client = MockClient((request) async {
+        capturedRequest = request;
+        return http.Response(
+          jsonEncode({
+            'candidates': [
+              {'id': 'hydro-coco', 'confidence': 0.94},
+              'unknown-drink',
+              {'id': 'hydro-coco', 'confidence': 0.82},
+              'sprite-botol',
+              'es-jeruk',
+              'matcha',
+            ],
+          }),
+          200,
+        );
+      });
+      final service = RemoteDrinkRecognitionService(
+        endpoint: Uri.parse('https://api.example.com/recognize'),
+        bearerToken: 'demo-token',
+        client: client,
+      );
+
+      final candidates = await service.identify(Uint8List.fromList([1, 2, 3]));
+      final body = jsonDecode(capturedRequest.body) as Map<String, dynamic>;
+
+      expect(capturedRequest.method, 'POST');
+      expect(capturedRequest.headers['authorization'], 'Bearer demo-token');
+      expect(body['imageBase64'], base64Encode([1, 2, 3]));
+      expect(body['mimeType'], 'image/jpeg');
+      expect(body['catalogIds'], contains('hydro-coco'));
+      expect(candidates, [
+        DrinkCatalog.hydroCoco,
+        DrinkCatalog.spriteBotol,
+        DrinkCatalog.esJeruk,
+      ]);
+    });
+
+    test('turns a server error into a recognition exception', () async {
+      final service = RemoteDrinkRecognitionService(
+        endpoint: Uri.parse('https://api.example.com/recognize'),
+        client: MockClient((_) async => http.Response('unavailable', 503)),
+      );
+
+      expect(
+        () => service.identify(Uint8List.fromList([1])),
+        throwsA(isA<DrinkRecognitionException>()),
+      );
+    });
+
+    test('rejects malformed and unknown-only candidates', () async {
+      final malformed = RemoteDrinkRecognitionService(
+        endpoint: Uri.parse('https://api.example.com/recognize'),
+        client: MockClient((_) async => http.Response('{oops', 200)),
+      );
+      final unknownOnly = RemoteDrinkRecognitionService(
+        endpoint: Uri.parse('https://api.example.com/recognize'),
+        client: MockClient(
+          (_) async => http.Response(
+            jsonEncode({
+              'candidates': ['not-in-catalog'],
+            }),
+            200,
+          ),
+        ),
+      );
+
+      expect(
+        () => malformed.identify(Uint8List.fromList([1])),
+        throwsA(isA<DrinkRecognitionException>()),
+      );
+      expect(
+        () => unknownOnly.identify(Uint8List.fromList([1])),
+        throwsA(isA<DrinkRecognitionException>()),
+      );
+    });
+
+    test('reports a timeout', () async {
+      final service = RemoteDrinkRecognitionService(
+        endpoint: Uri.parse('https://api.example.com/recognize'),
+        timeout: const Duration(milliseconds: 1),
+        client: MockClient((_) async {
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+          return http.Response('{}', 200);
+        }),
+      );
+
+      expect(
+        () => service.identify(Uint8List.fromList([1])),
+        throwsA(
+          isA<DrinkRecognitionException>().having(
+            (error) => error.message,
+            'message',
+            contains('terlalu lama'),
+          ),
+        ),
+      );
+    });
+  });
+
+  group('DrinkRecognitionServiceFactory', () {
+    test('uses the demo adapter when endpoint is missing or invalid', () {
+      expect(
+        DrinkRecognitionServiceFactory.create(endpoint: ''),
+        isA<DemoDrinkRecognitionService>(),
+      );
+      expect(
+        DrinkRecognitionServiceFactory.create(endpoint: 'not-a-url'),
+        isA<DemoDrinkRecognitionService>(),
+      );
+    });
+
+    test('uses the remote adapter for an HTTP endpoint', () {
+      expect(
+        DrinkRecognitionServiceFactory.create(
+          endpoint: 'https://api.example.com/recognize',
+        ),
+        isA<RemoteDrinkRecognitionService>(),
+      );
+    });
+  });
+}

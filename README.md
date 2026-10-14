@@ -71,11 +71,12 @@ Saat ini repository berisi alur MVP awal yang dapat diklik:
 - Form minuman custom dengan input sendok gula, pump sirup, preview estimasi, dan pencatatan ke Dashboard.
 - Persistensi log minuman lokal per tanggal, termasuk level gula, minuman custom, dan penghematan Swap.
 - Home-screen widget Android yang menampilkan sisa gula hari ini dan membuka Scan dalam satu tap.
-- Alur pengenalan foto dengan state loading, error/retry, tiga kandidat dinamis, dan fallback pencarian manual. Adapter saat ini memakai hasil demo lokal dan siap diganti endpoint AI.
+- Alur pengenalan foto dengan state loading, error/retry, tiga kandidat dinamis, dan fallback pencarian manual.
+- Client recognition API yang dapat dikonfigurasi saat build, lengkap dengan timeout, validasi response, deduplikasi kandidat, dan fallback otomatis ke adapter demo lokal.
 - Personalisasi Dashboard dari nama dan waktu beli minuman yang disimpan saat onboarding.
 - Navigasi Android dan web.
 
-Endpoint AI nyata, database cloud, dan penerapan desain final ke seluruh screen belum diimplementasikan. Katalog, hasil recognition, dan aturan Swap saat ini masih merupakan data demo lokal dari design handoff.
+Backend AI nyata, database cloud, dan penerapan desain final ke seluruh screen belum diimplementasikan. Tanpa konfigurasi endpoint, hasil recognition tetap memakai adapter demo lokal. Katalog dan aturan Swap saat ini masih merupakan data demo lokal dari design handoff.
 
 ## Design system
 
@@ -105,7 +106,7 @@ Font Onest disimpan lokal agar konsisten pada Android dan web. Lisensi SIL Open 
 
 ### Roadmap
 
-- Endpoint AI untuk menggantikan adapter recognition demo.
+- Backend AI dan autentikasi production untuk melayani recognition API.
 - Animasi penghematan gula dan confetti kontekstual.
 - Dukungan kategori makanan.
 
@@ -156,6 +157,37 @@ Untuk menjalankan pada Android, sambungkan perangkat dengan USB debugging atau j
 flutter devices
 flutter run -d <device-id>
 ```
+
+### Menghubungkan recognition API
+
+Secara default, Scan memakai adapter demo lokal. Untuk memakai backend recognition, jalankan aplikasi dengan endpoint milik tim:
+
+```bash
+flutter run -d chrome --dart-define=STEV_RECOGNITION_ENDPOINT=https://api.example.com/recognize
+```
+
+Client mengirim request `POST` JSON berikut:
+
+```json
+{
+  "imageBase64": "...",
+  "mimeType": "image/jpeg",
+  "catalogIds": ["es-teh-manis", "boba-milk-tea"]
+}
+```
+
+Backend harus mengembalikan maksimal tiga kandidat terurut. ID yang tidak ada di katalog akan diabaikan:
+
+```json
+{
+  "candidates": [
+    {"id": "es-teh-manis", "confidence": 0.94},
+    {"id": "boba-milk-tea", "confidence": 0.81}
+  ]
+}
+```
+
+Token gateway demo opsional dapat diberikan lewat `--dart-define=STEV_RECOGNITION_TOKEN=...`. Jangan menaruh API key provider AI atau secret production di aplikasi Flutter; simpan secret tersebut di backend.
 
 ## Pemeriksaan kualitas
 
