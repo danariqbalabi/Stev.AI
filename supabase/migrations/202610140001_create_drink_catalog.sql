@@ -72,11 +72,15 @@ grant select
   on public.drinks, public.sugar_options, public.drink_aliases
   to anon, authenticated;
 
+drop policy if exists "verified drinks are publicly readable"
+  on public.drinks;
 create policy "verified drinks are publicly readable"
   on public.drinks for select
   to anon, authenticated
   using (verified = true);
 
+drop policy if exists "options of verified drinks are publicly readable"
+  on public.sugar_options;
 create policy "options of verified drinks are publicly readable"
   on public.sugar_options for select
   to anon, authenticated
@@ -88,6 +92,8 @@ create policy "options of verified drinks are publicly readable"
     )
   );
 
+drop policy if exists "aliases of verified drinks are publicly readable"
+  on public.drink_aliases;
 create policy "aliases of verified drinks are publicly readable"
   on public.drink_aliases for select
   to anon, authenticated
