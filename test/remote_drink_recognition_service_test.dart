@@ -64,6 +64,7 @@ void main() {
       final service = RemoteDrinkRecognitionService(
         endpoint: Uri.parse('https://api.example.com/recognize'),
         bearerToken: 'demo-token',
+        apiKey: 'publishable-key',
         client: client,
       );
 
@@ -72,6 +73,7 @@ void main() {
 
       expect(capturedRequest.method, 'POST');
       expect(capturedRequest.headers['authorization'], 'Bearer demo-token');
+      expect(capturedRequest.headers['apikey'], 'publishable-key');
       expect(body['imageBase64'], base64Encode([1, 2, 3]));
       expect(body['mimeType'], 'image/jpeg');
       expect(body['catalogIds'], contains('hydro-coco'));
@@ -92,6 +94,31 @@ void main() {
         () => service.identify(Uint8List.fromList([1])),
         throwsA(isA<DrinkRecognitionException>()),
       );
+    });
+
+    test('rejects an oversized photo before calling the server', () async {
+      var requestCount = 0;
+      final service = RemoteDrinkRecognitionService(
+        endpoint: Uri.parse('https://api.example.com/recognize'),
+        client: MockClient((_) async {
+          requestCount++;
+          return http.Response('{}', 200);
+        }),
+      );
+
+      expect(
+        () => service.identify(
+          Uint8List(RemoteDrinkRecognitionService.maxImageBytes + 1),
+        ),
+        throwsA(
+          isA<DrinkRecognitionException>().having(
+            (error) => error.message,
+            'message',
+            contains('8 MB'),
+          ),
+        ),
+      );
+      expect(requestCount, 0);
     });
 
     test('rejects malformed and unknown-only candidates', () async {
@@ -163,6 +190,20 @@ void main() {
         ),
         isA<RemoteDrinkRecognitionService>(),
       );
+    });
+
+    test('adds publishable key only for a Supabase function', () {
+      final supabase = DrinkRecognitionServiceFactory.create(
+        endpoint: 'https://project.supabase.co/functions/v1/recognize-drink',
+        supabasePublishableKey: 'publishable-key',
+      ) as RemoteDrinkRecognitionService;
+      final generic = DrinkRecognitionServiceFactory.create(
+        endpoint: 'https://api.example.com/recognize',
+        supabasePublishableKey: 'publishable-key',
+      ) as RemoteDrinkRecognitionService;
+
+      expect(supabase.apiKey, 'publishable-key');
+      expect(generic.apiKey, isNull);
     });
   });
 }

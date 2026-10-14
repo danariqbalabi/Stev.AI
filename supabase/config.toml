@@ -1,0 +1,2 @@
+[functions.recognize-drink]
+verify_jwt = false
