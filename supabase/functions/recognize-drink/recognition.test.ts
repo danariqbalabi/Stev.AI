@@ -59,7 +59,9 @@ test("builds a vision request without asking AI for sugar values", () => {
     encoded,
     /"inlineData":\{"mimeType":"image\/png","data":"AQID"\}/,
   );
-  assert.match(encoded, /"responseFormat"/);
+  assert.match(encoded, /"responseMimeType":"application\/json"/);
+  assert.match(encoded, /"responseJsonSchema"/);
+  assert.doesNotMatch(encoded, /"responseFormat"/);
   assert.doesNotMatch(encoded, /sugar_grams/);
 });
 

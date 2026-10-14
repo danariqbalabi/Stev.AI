@@ -177,30 +177,26 @@ export function buildGeminiRequest(
     }],
     generationConfig: {
       temperature: 0.1,
-      responseFormat: {
-        text: {
-          mimeType: "application/json",
-          schema: {
-            type: "object",
-            properties: {
-              candidates: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    id: { type: "string" },
-                    confidence: { type: "number" },
-                  },
-                  required: ["id", "confidence"],
-                  additionalProperties: false,
-                },
-                maxItems: 3,
+      responseMimeType: "application/json",
+      responseJsonSchema: {
+        type: "object",
+        properties: {
+          candidates: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                id: { type: "string" },
+                confidence: { type: "number" },
               },
+              required: ["id", "confidence"],
+              additionalProperties: false,
             },
-            required: ["candidates"],
-            additionalProperties: false,
+            maxItems: 3,
           },
         },
+        required: ["candidates"],
+        additionalProperties: false,
       },
     },
   };
