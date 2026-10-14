@@ -106,16 +106,7 @@ class _ManualSearchScreenState extends State<ManualSearchScreen> {
                     key: const ValueKey('addCustomDrinkButton'),
                     label: '+ Tambah minuman',
                     variant: StevButtonVariant.card,
-                    onPressed: () {
-                      ScaffoldMessenger.of(context)
-                        ..hideCurrentSnackBar()
-                        ..showSnackBar(
-                          const SnackBar(
-                            content: Text('Tambah minuman segera hadir.'),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                    },
+                    onPressed: () => context.push('/manual/add'),
                   ),
                 ],
               ),
@@ -220,6 +211,7 @@ class _CategoryChip extends StatelessWidget {
     DrinkCategory.tea => 'Teh',
     DrinkCategory.boba => 'Boba',
     DrinkCategory.juice => 'Jus',
+    DrinkCategory.custom => 'Custom',
   };
 
   @override

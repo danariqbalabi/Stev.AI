@@ -29,7 +29,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('weekly tab explains its upcoming state', (tester) async {
+  testWidgets('weekly tab opens the weekly dashboard', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -40,7 +40,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     await tester.tap(find.text('Mingguan'));
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 700));
 
-    expect(find.text('Grafik mingguan segera hadir.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('weeklyScreen')), findsOneWidget);
+    expect(find.text('Gula harian'), findsOneWidget);
   });
 }

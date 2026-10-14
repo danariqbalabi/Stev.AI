@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../core/theme/stev_tokens.dart';
 import '../features/confirmation/presentation/confirmation_screen.dart';
+import '../features/custom_drink/presentation/custom_drink_screen.dart';
 import '../features/dashboard/presentation/dashboard_screen.dart';
 import '../features/drinks/data/drink_catalog.dart';
 import '../features/drinks/domain/drink.dart';
@@ -13,6 +14,7 @@ import '../features/onboarding/presentation/onboarding_profile_screen.dart';
 import '../features/onboarding/presentation/onboarding_welcome_screen.dart';
 import '../features/result/presentation/result_screen.dart';
 import '../features/scan/presentation/scan_screen.dart';
+import '../features/weekly/presentation/weekly_screen.dart';
 
 GoRouter createAppRouter({required bool onboardingComplete}) {
   return GoRouter(
@@ -29,11 +31,21 @@ GoRouter createAppRouter({required bool onboardingComplete}) {
             _fadePage(state: state, child: const OnboardingProfileScreen()),
       ),
       GoRoute(path: '/', builder: (context, state) => const DashboardScreen()),
+      GoRoute(
+        path: '/weekly',
+        pageBuilder: (context, state) =>
+            _fadePage(state: state, child: const WeeklyScreen()),
+      ),
       GoRoute(path: '/scan', builder: (context, state) => const ScanScreen()),
       GoRoute(
         path: '/manual',
         pageBuilder: (context, state) =>
             _fadePage(state: state, child: const ManualSearchScreen()),
+      ),
+      GoRoute(
+        path: '/manual/add',
+        pageBuilder: (context, state) =>
+            _fadePage(state: state, child: const CustomDrinkScreen()),
       ),
       GoRoute(
         path: '/confirmation',

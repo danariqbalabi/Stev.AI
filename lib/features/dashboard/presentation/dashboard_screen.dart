@@ -52,23 +52,7 @@ class DashboardScreen extends StatelessWidget {
         activeTab: StevTab.home,
         onHome: () {},
         onScan: () => context.push('/scan'),
-        onWeekly: () {
-          ScaffoldMessenger.of(context)
-            ..hideCurrentSnackBar()
-            ..showSnackBar(
-              SnackBar(
-                content: const Text('Grafik mingguan segera hadir.'),
-                behavior: SnackBarBehavior.floating,
-                margin: const EdgeInsets.fromLTRB(
-                  StevSpace.s5,
-                  StevSpace.s5,
-                  StevSpace.s5,
-                  104,
-                ),
-                backgroundColor: StevColors.ink,
-              ),
-            );
-        },
+        onWeekly: () => context.go('/weekly'),
       ),
     );
   }

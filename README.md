@@ -67,9 +67,13 @@ Saat ini repository berisi alur MVP awal yang dapat diklik:
 - Hasil kandungan gula sesuai design handoff dengan level picker, visual sendok, status batas harian, dan pencatatan ke Dashboard.
 - Reward overlay Swap dengan odometer gram, penghematan, confetti kontekstual, dan pencatatan hasil pilihan.
 - Pencarian manual dengan filter kategori dan katalog 10 minuman yang terhubung ke Result.
+- Dashboard mingguan dari log lokal dengan ringkasan penghematan Swap, grafik konsumsi tujuh hari, dan penanda batas 50 gram.
+- Form minuman custom dengan input sendok gula, pump sirup, preview estimasi, dan pencatatan ke Dashboard.
+- Persistensi log minuman lokal per tanggal, termasuk level gula, minuman custom, dan penghematan Swap.
+- Home-screen widget Android yang menampilkan sisa gula hari ini dan membuka Scan dalam satu tap.
 - Navigasi Android dan web.
 
-AI, database, persistensi riwayat minuman, widget Android, dan penerapan desain final ke seluruh screen belum diimplementasikan. Katalog dan aturan Swap saat ini masih merupakan data demo lokal dari design handoff.
+AI, database cloud, dan penerapan desain final ke seluruh screen belum diimplementasikan. Katalog dan aturan Swap saat ini masih merupakan data demo lokal dari design handoff.
 
 ## Design system
 
@@ -99,10 +103,7 @@ Font Onest disimpan lokal agar konsisten pada Android dan web. Lisensi SIL Open 
 
 ### Roadmap
 
-- Home-screen widget Android.
 - Pencarian minuman manual.
-- Grafik konsumsi mingguan.
-- Tambah minuman custom.
 - Personalisasi lanjutan berdasarkan profil onboarding.
 - Animasi penghematan gula dan confetti kontekstual.
 - Dukungan kategori makanan.
@@ -115,7 +116,7 @@ Font Onest disimpan lokal agar konsisten pada Android dan web. Lisensi SIL Open 
 - `go_router` untuk navigasi.
 - `camera` untuk viewfinder dan pengambilan foto di Android/Web.
 - `image_picker` sebagai fallback galeri/file.
-- `shared_preferences` untuk status onboarding dan profil lokal.
+- `shared_preferences` untuk status onboarding, profil, dan log minuman harian lokal.
 - Android dan Flutter Web dari satu codebase.
 - Supabase untuk backend dan database pada tahap berikutnya.
 - Backend/Edge Function untuk menjaga API key layanan AI agar tidak tersimpan di client.

@@ -89,9 +89,7 @@ void main() {
     expect(find.byKey(const ValueKey('sugarLevel-normal')), findsOneWidget);
   });
 
-  testWidgets('empty state and custom drink placeholder are clear', (
-    tester,
-  ) async {
+  testWidgets('empty state can open the custom drink form', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -115,6 +113,7 @@ void main() {
     );
     await tester.tap(find.byKey(const ValueKey('addCustomDrinkButton')));
     await tester.pump();
-    expect(find.text('Tambah minuman segera hadir.'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byKey(const ValueKey('customDrinkScreen')), findsOneWidget);
   });
 }
