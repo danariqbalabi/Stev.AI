@@ -14,12 +14,14 @@ class RemoteDrinkRecognitionService implements DrinkRecognitionService {
     this.bearerToken,
     this.timeout = const Duration(seconds: 15),
     this.client,
-  });
+    Iterable<Drink> catalog = DrinkCatalog.all,
+  }) : catalog = List.unmodifiable(catalog);
 
   final Uri endpoint;
   final String? bearerToken;
   final Duration timeout;
   final http.Client? client;
+  final List<Drink> catalog;
 
   @override
   Future<List<Drink>> identify(Uint8List photoBytes) async {
@@ -42,7 +44,7 @@ class RemoteDrinkRecognitionService implements DrinkRecognitionService {
             body: jsonEncode({
               'imageBase64': base64Encode(photoBytes),
               'mimeType': 'image/jpeg',
-              'catalogIds': DrinkCatalog.all.map((drink) => drink.id).toList(),
+              'catalogIds': catalog.map((drink) => drink.id).toList(),
             }),
           )
           .timeout(timeout);
@@ -98,7 +100,7 @@ class RemoteDrinkRecognitionService implements DrinkRecognitionService {
       };
       if (id == null || !seenIds.add(id)) continue;
 
-      final drink = DrinkCatalog.findById(id);
+      final drink = _findById(id);
       if (drink != null) candidates.add(drink);
       if (candidates.length == 3) break;
     }
@@ -109,5 +111,12 @@ class RemoteDrinkRecognitionService implements DrinkRecognitionService {
       );
     }
     return candidates;
+  }
+
+  Drink? _findById(String id) {
+    for (final drink in catalog) {
+      if (drink.id == id) return drink;
+    }
+    return null;
   }
 }

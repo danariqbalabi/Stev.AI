@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/stev_tokens.dart';
 import '../../../shared/widgets/stev_design_system.dart';
+import '../../../shared/widgets/drink_photo.dart';
 import '../../drinks/application/drink_log_controller.dart';
 import '../../drinks/domain/drink.dart';
 import '../../drinks/domain/drink_swap.dart';
@@ -407,11 +408,7 @@ class _RewardDrinkCard extends StatelessWidget {
         children: [
           SizedBox.square(
             dimension: StevSize.rewardCard,
-            child: Image.asset(
-              selection.drink.photoAsset,
-              fit: selection.drink.photoFit,
-              alignment: selection.drink.photoAlignment,
-            ),
+            child: DrinkPhoto(drink: selection.drink),
           ),
           Expanded(
             child: Padding(

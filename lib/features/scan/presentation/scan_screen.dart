@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../recognition/data/drink_recognition_service_factory.dart';
 import '../../recognition/domain/drink_recognition.dart';
+import '../../drinks/application/drink_catalog_controller.dart';
 
 class ScanScreen extends StatefulWidget {
   const ScanScreen({super.key, this.recognitionService});
@@ -20,8 +21,7 @@ class ScanScreen extends StatefulWidget {
 
 class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
   final ImagePicker _imagePicker = ImagePicker();
-  late final DrinkRecognitionService _recognitionService =
-      widget.recognitionService ?? DrinkRecognitionServiceFactory.create();
+  DrinkRecognitionService? _recognitionService;
 
   CameraController? _cameraController;
   Uint8List? _photoBytes;
@@ -37,6 +37,16 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     unawaited(_initializeCamera());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _recognitionService =
+        widget.recognitionService ??
+        DrinkRecognitionServiceFactory.create(
+          catalog: DrinkCatalogScope.of(context).drinks,
+        );
   }
 
   @override
@@ -223,7 +233,7 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
       _recognitionError = null;
     });
     try {
-      final candidates = await _recognitionService.identify(photoBytes);
+      final candidates = await _recognitionService!.identify(photoBytes);
       if (!mounted) return;
       if (candidates.isEmpty) {
         throw const DrinkRecognitionException(

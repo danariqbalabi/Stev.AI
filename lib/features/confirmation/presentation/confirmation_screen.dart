@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/stev_tokens.dart';
+import '../../../shared/widgets/drink_photo.dart';
 import '../../drinks/data/drink_catalog.dart';
 import '../../drinks/domain/drink.dart';
 
@@ -280,11 +281,7 @@ class _GuessCard extends StatelessWidget {
                   dimension: StevSize.guessCard,
                   child: ColoredBox(
                     color: StevColors.canvas,
-                    child: Image.asset(
-                      drink.photoAsset,
-                      fit: drink.photoFit,
-                      alignment: drink.photoAlignment,
-                    ),
+                    child: DrinkPhoto(drink: drink),
                   ),
                 ),
                 Expanded(

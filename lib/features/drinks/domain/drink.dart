@@ -41,7 +41,8 @@ class Drink {
     required this.estimated,
     required this.category,
     required this.kind,
-    required this.photoAsset,
+    this.photoAsset = '',
+    this.photoUrl,
     this.levels,
     this.logIdentityId,
     this.photoFit = BoxFit.cover,
@@ -55,6 +56,7 @@ class Drink {
   final DrinkCategory category;
   final DrinkKind kind;
   final String photoAsset;
+  final String? photoUrl;
   final SugarLevels? levels;
   final String? logIdentityId;
   final BoxFit photoFit;

@@ -1,13 +1,22 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'app/app.dart';
 import 'app/router.dart';
+import 'core/config/stev_backend_config.dart';
+import 'features/drinks/application/drink_catalog_controller.dart';
 import 'features/drinks/application/drink_log_controller.dart';
 import 'features/home_widget/application/home_widget_bridge.dart';
 import 'features/onboarding/data/onboarding_preferences.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final supabaseClient = await StevBackendConfig.initialize();
+  final drinkCatalogController = DrinkCatalogController.forBackend(
+    supabaseClient,
+  );
+  unawaited(drinkCatalogController.refresh());
   final onboardingComplete = await OnboardingPreferences.isComplete();
   final drinkLogController = await DrinkLogController.persistent();
   final router = createAppRouter(onboardingComplete: onboardingComplete);
@@ -18,5 +27,11 @@ Future<void> main() async {
     await HomeWidgetBridge.update();
   });
 
-  runApp(StevAiApp(router: router, drinkLogController: drinkLogController));
+  runApp(
+    StevAiApp(
+      router: router,
+      drinkLogController: drinkLogController,
+      drinkCatalogController: drinkCatalogController,
+    ),
+  );
 }

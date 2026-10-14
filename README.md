@@ -73,6 +73,7 @@ Saat ini repository berisi alur MVP awal yang dapat diklik:
 - Home-screen widget Android yang menampilkan sisa gula hari ini dan membuka Scan dalam satu tap.
 - Alur pengenalan foto dengan state loading, error/retry, tiga kandidat dinamis, dan fallback pencarian manual.
 - Client recognition API yang dapat dikonfigurasi saat build, lengkap dengan timeout, validasi response, deduplikasi kandidat, dan fallback otomatis ke adapter demo lokal.
+- Fondasi Supabase untuk katalog remote, schema/RLS, seed 10 minuman, gambar remote, dan fallback offline ke katalog lokal.
 - Personalisasi Dashboard dari nama dan waktu beli minuman yang disimpan saat onboarding.
 - Navigasi Android dan web.
 
@@ -120,7 +121,7 @@ Font Onest disimpan lokal agar konsisten pada Android dan web. Lisensi SIL Open 
 - `image_picker` sebagai fallback galeri/file.
 - `shared_preferences` untuk status onboarding, profil, dan log minuman harian lokal.
 - Android dan Flutter Web dari satu codebase.
-- Supabase untuk backend dan database pada tahap berikutnya.
+- Supabase/PostgreSQL untuk katalog remote, dengan Row Level Security dan fallback data lokal.
 - Backend/Edge Function untuk menjaga API key layanan AI agar tidak tersimpan di client.
 - Git dan GitHub dengan branch per fitur.
 
@@ -188,6 +189,22 @@ Backend harus mengembalikan maksimal tiga kandidat terurut. ID yang tidak ada di
 ```
 
 Token gateway demo opsional dapat diberikan lewat `--dart-define=STEV_RECOGNITION_TOKEN=...`. Jangan menaruh API key provider AI atau secret production di aplikasi Flutter; simpan secret tersebut di backend.
+
+### Mengaktifkan Supabase
+
+Tanpa konfigurasi, aplikasi tetap memakai katalog lokal. Untuk memakai katalog Supabase:
+
+1. Buat project Supabase.
+2. Jalankan migration `supabase/migrations/202610140001_create_drink_catalog.sql` melalui SQL Editor atau Supabase CLI.
+3. Salin `config/env.example.json` menjadi `config/env.local.json`.
+4. Isi Project URL dan publishable key dari panel **Connect**. File lokal ini diabaikan Git.
+5. Jalankan:
+
+```bash
+flutter run -d chrome --dart-define-from-file=config/env.local.json
+```
+
+Migration mengaktifkan RLS. Client hanya dapat membaca minuman terverifikasi beserta opsi gula dan aliasnya. Operasi tulis tidak dibuka untuk client; penambahan atau verifikasi data harus dilakukan melalui dashboard atau backend yang aman. Jangan pernah memasukkan service-role key ke Flutter.
 
 ## Pemeriksaan kualitas
 

@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/stev_tokens.dart';
 import '../../../shared/widgets/stev_design_system.dart';
+import '../../../shared/widgets/drink_photo.dart';
 import '../../drinks/application/drink_log_controller.dart';
 import '../../drinks/domain/drink.dart';
 import '../../drinks/domain/drink_swap.dart';
@@ -122,11 +123,7 @@ class _DrinkPhoto extends StatelessWidget {
         height: 430,
         child: ColoredBox(
           color: StevColors.canvas,
-          child: Image.asset(
-            drink.photoAsset,
-            fit: drink.photoFit,
-            alignment: drink.photoAlignment,
-          ),
+          child: DrinkPhoto(drink: drink),
         ),
       ),
     );
