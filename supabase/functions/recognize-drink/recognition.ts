@@ -138,10 +138,9 @@ export function mapCatalogRows(
   return drinks;
 }
 
-export function buildOpenAIRequest(
+export function buildGeminiRequest(
   request: RecognitionRequest,
   catalog: CatalogDrink[],
-  model: string,
 ): Record<string, unknown> {
   const catalogText = catalog.map((drink) => {
     const brand = drink.brand ? `; brand=${drink.brand}` : "";
@@ -152,70 +151,72 @@ export function buildOpenAIRequest(
   }).join("\n");
 
   return {
-    model,
-    store: false,
-    instructions:
-      "Anda adalah pengenal minuman Indonesia. Pilih hanya ID yang tersedia dalam katalog. " +
-      "Jangan menebak kandungan gula dan jangan membuat ID baru. Gunakan teks pada kemasan/menu, " +
-      "logo, bentuk produk, dan konteks visual. Confidence harus 0 sampai 1.",
-    input: [{
+    systemInstruction: {
+      parts: [{
+        text:
+          "Anda adalah pengenal minuman Indonesia. Pilih hanya ID yang tersedia dalam katalog. " +
+          "Jangan menebak kandungan gula dan jangan membuat ID baru. Gunakan teks pada kemasan/menu, " +
+          "logo, bentuk produk, dan konteks visual. Confidence harus 0 sampai 1.",
+      }],
+    },
+    contents: [{
       role: "user",
-      content: [
+      parts: [
         {
-          type: "input_text",
           text:
             "Identifikasi minuman pada foto. Kembalikan maksimal tiga kandidat paling mungkin " +
             `dari katalog berikut:\n${catalogText}`,
         },
         {
-          type: "input_image",
-          image_url: `data:${request.mimeType};base64,${request.imageBase64}`,
-          detail: "low",
+          inlineData: {
+            mimeType: request.mimeType,
+            data: request.imageBase64,
+          },
         },
       ],
     }],
-    text: {
-      format: {
-        type: "json_schema",
-        name: "drink_recognition",
-        strict: true,
-        schema: {
-          type: "object",
-          properties: {
-            candidates: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  id: { type: "string" },
-                  confidence: { type: "number" },
+    generationConfig: {
+      temperature: 0.1,
+      responseFormat: {
+        text: {
+          mimeType: "application/json",
+          schema: {
+            type: "object",
+            properties: {
+              candidates: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    id: { type: "string" },
+                    confidence: { type: "number" },
+                  },
+                  required: ["id", "confidence"],
+                  additionalProperties: false,
                 },
-                required: ["id", "confidence"],
-                additionalProperties: false,
+                maxItems: 3,
               },
             },
+            required: ["candidates"],
+            additionalProperties: false,
           },
-          required: ["candidates"],
-          additionalProperties: false,
         },
       },
     },
   };
 }
 
-export function extractOutputText(value: unknown): string | null {
+export function extractGeminiOutputText(value: unknown): string | null {
   if (!isRecord(value)) return null;
-  if (typeof value.output_text === "string") return value.output_text;
-  if (!Array.isArray(value.output)) return null;
+  if (!Array.isArray(value.candidates)) return null;
 
-  for (const item of value.output) {
-    if (!isRecord(item) || !Array.isArray(item.content)) continue;
-    for (const content of item.content) {
-      if (
-        isRecord(content) && content.type === "output_text" &&
-        typeof content.text === "string"
-      ) {
-        return content.text;
+  for (const candidate of value.candidates) {
+    if (!isRecord(candidate) || !isRecord(candidate.content)) continue;
+    const parts = candidate.content.parts;
+    if (!Array.isArray(parts)) continue;
+    for (const part of parts) {
+      if (isRecord(part) && typeof part.text === "string") {
+        return part.text;
       }
     }
   }

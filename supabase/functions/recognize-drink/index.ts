@@ -1,6 +1,6 @@
 import {
-  buildOpenAIRequest,
-  extractOutputText,
+  buildGeminiRequest,
+  extractGeminiOutputText,
   mapCatalogRows,
   parseRecognitionRequest,
   RequestValidationError,
@@ -70,30 +70,36 @@ Deno.serve(async (request) => {
       : [];
     if (catalog.length === 0) return json({ candidates: [] });
 
-    const openAIKey = Deno.env.get("OPENAI_API_KEY");
-    if (!openAIKey) return json({ error: "ai_not_configured" }, 503);
-    const model = Deno.env.get("OPENAI_VISION_MODEL") || "gpt-4.1-mini";
-    const aiResponse = await fetch("https://api.openai.com/v1/responses", {
+    const geminiKey = Deno.env.get("GEMINI_API_KEY");
+    if (!geminiKey) return json({ error: "ai_not_configured" }, 503);
+    const model = Deno.env.get("GEMINI_MODEL") || "gemini-3.5-flash-lite";
+    const geminiUrl = new URL(
+      `https://generativelanguage.googleapis.com/v1beta/models/${
+        encodeURIComponent(model)
+      }:generateContent`,
+    );
+    const aiResponse = await fetch(geminiUrl, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${openAIKey}`,
+        "x-goog-api-key": geminiKey,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(
-        buildOpenAIRequest(recognitionRequest, catalog, model),
+        buildGeminiRequest(recognitionRequest, catalog),
       ),
     });
     if (!aiResponse.ok) {
       console.error(
         "Vision provider failed",
         aiResponse.status,
-        aiResponse.headers.get("x-request-id"),
+        aiResponse.headers.get("x-request-id") ??
+          aiResponse.headers.get("x-guploader-uploadid"),
       );
       return json({ error: "vision_provider_failed" }, 502);
     }
 
     const aiBody: unknown = await aiResponse.json();
-    const outputText = extractOutputText(aiBody);
+    const outputText = extractGeminiOutputText(aiBody);
     const allowedDatabaseIds = new Set(catalog.map((drink) => drink.id));
     const candidates = outputText === null
       ? []

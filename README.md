@@ -192,7 +192,7 @@ Token gateway demo opsional dapat diberikan lewat `--dart-define=STEV_RECOGNITIO
 
 ### Deploy recognition backend
 
-Backend recognition berada di `supabase/functions/recognize-drink`. Function memvalidasi request dan publishable key, membaca hanya katalog terverifikasi, mengirim gambar ke OpenAI Responses API dengan Structured Outputs, lalu menyaring ulang kandidat terhadap ID database. Foto tidak disimpan dan request AI menggunakan `store: false`.
+Backend recognition berada di `supabase/functions/recognize-drink`. Function memvalidasi request dan publishable key, membaca hanya katalog terverifikasi, mengirim gambar ke Gemini Developer API dengan structured output, lalu menyaring ulang kandidat terhadap ID database. Backend Stev.AI tidak menyimpan foto.
 
 Login dan hubungkan Supabase CLI:
 
@@ -204,12 +204,14 @@ npx supabase link --project-ref YOUR_PROJECT_REF
 Simpan API key AI sebagai secret server dan deploy function:
 
 ```bash
-npx supabase secrets set OPENAI_API_KEY=YOUR_OPENAI_API_KEY
-npx supabase secrets set OPENAI_VISION_MODEL=gpt-4.1-mini
+npx supabase secrets set GEMINI_API_KEY=YOUR_GEMINI_API_KEY
+npx supabase secrets set GEMINI_MODEL=gemini-3.5-flash-lite
 npx supabase functions deploy recognize-drink
 ```
 
-Jangan memasukkan `OPENAI_API_KEY` ke `config/env.local.json`, Flutter, atau Git. Untuk development lokal, salin `supabase/functions/.env.example` menjadi `supabase/functions/.env`; file tersebut diabaikan Git.
+Ambil API key dari [Google AI Studio](https://aistudio.google.com/app/apikey). Jangan memasukkan `GEMINI_API_KEY` ke `config/env.local.json`, Flutter, atau Git. Untuk development lokal, salin `supabase/functions/.env.example` menjadi `supabase/functions/.env`; file tersebut diabaikan Git.
+
+Gemini menyediakan free tier dengan kuota terbatas. Pada free tier, konten yang dikirim dapat digunakan Google untuk meningkatkan produknya. Karena itu, arahkan kamera hanya ke minuman dan jangan kirim foto yang memuat wajah atau data sensitif.
 
 Setelah function berhasil di-deploy, isi konfigurasi Flutter:
 

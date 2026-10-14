@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  buildOpenAIRequest,
-  extractOutputText,
+  buildGeminiRequest,
+  extractGeminiOutputText,
   mapCatalogRows,
   parseRecognitionRequest,
   RequestValidationError,
@@ -50,33 +50,36 @@ test("maps only requested catalog rows and aliases", () => {
 });
 
 test("builds a vision request without asking AI for sugar values", () => {
-  const payload = buildOpenAIRequest(
+  const payload = buildGeminiRequest(
     { imageBase64: "AQID", mimeType: "image/png", catalogIds: ["matcha"] },
     [{ id: "matcha", name: "Matcha", brand: null, aliases: [] }],
-    "vision-test",
   );
-  assert.equal(payload.model, "vision-test");
-  assert.equal(payload.store, false);
-  assert.match(JSON.stringify(payload), /data:image\/png;base64,AQID/);
-  assert.doesNotMatch(JSON.stringify(payload), /sugar_grams/);
+  const encoded = JSON.stringify(payload);
+  assert.match(
+    encoded,
+    /"inlineData":\{"mimeType":"image\/png","data":"AQID"\}/,
+  );
+  assert.match(encoded, /"responseFormat"/);
+  assert.doesNotMatch(encoded, /sugar_grams/);
 });
 
 test("extracts output and keeps three valid unique candidates", () => {
-  const output = extractOutputText({
-    output: [{
-      content: [{
-        type: "output_text",
-        text: JSON.stringify({
-          candidates: [
-            { id: "matcha", confidence: 0.7 },
-            { id: "unknown", confidence: 1 },
-            { id: "matcha", confidence: 0.5 },
-            { id: "tea", confidence: 0.9 },
-            { id: "coffee", confidence: 0.8 },
-            { id: "boba", confidence: 0.6 },
-          ],
-        }),
-      }],
+  const output = extractGeminiOutputText({
+    candidates: [{
+      content: {
+        parts: [{
+          text: JSON.stringify({
+            candidates: [
+              { id: "matcha", confidence: 0.7 },
+              { id: "unknown", confidence: 1 },
+              { id: "matcha", confidence: 0.5 },
+              { id: "tea", confidence: 0.9 },
+              { id: "coffee", confidence: 0.8 },
+              { id: "boba", confidence: 0.6 },
+            ],
+          }),
+        }],
+      },
     }],
   });
   assert.ok(output);
