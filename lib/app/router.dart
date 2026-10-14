@@ -14,6 +14,9 @@ import '../features/onboarding/presentation/onboarding_profile_screen.dart';
 import '../features/onboarding/presentation/onboarding_welcome_screen.dart';
 import '../features/result/presentation/result_screen.dart';
 import '../features/recognition/domain/drink_recognition.dart';
+import '../features/risk_assessment/domain/risk_assessment.dart';
+import '../features/risk_assessment/presentation/risk_assessment_screen.dart';
+import '../features/risk_assessment/presentation/risk_result_screen.dart';
 import '../features/scan/presentation/scan_screen.dart';
 import '../features/weekly/presentation/weekly_screen.dart';
 
@@ -70,6 +73,21 @@ GoRouter createAppRouter({required bool onboardingComplete}) {
               ? state.extra! as Drink
               : DrinkCatalog.esTehManis,
         ),
+      ),
+      GoRoute(
+        path: '/risk',
+        pageBuilder: (context, state) =>
+            _fadePage(state: state, child: const RiskAssessmentScreen()),
+      ),
+      GoRoute(
+        path: '/risk/result',
+        builder: (context, state) {
+          final result = state.extra;
+          if (result is! RiskAssessmentResult) {
+            return const RiskAssessmentScreen();
+          }
+          return RiskResultScreen(result: result);
+        },
       ),
     ],
   );

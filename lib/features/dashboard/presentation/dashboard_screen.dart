@@ -69,6 +69,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 if (index > 0) const SizedBox(height: StevSpace.s3),
                 DrinkRow(drink: drinkLog.entries[index]),
               ],
+              if (drinkLog.entries.isNotEmpty) ...[
+                const SizedBox(height: StevSpace.s10),
+                const _RiskAssessmentCard(),
+              ],
             ],
           ),
         ),
@@ -78,6 +82,52 @@ class _DashboardScreenState extends State<DashboardScreen> {
         onHome: () {},
         onScan: () => context.push('/scan'),
         onWeekly: () => context.go('/weekly'),
+      ),
+    );
+  }
+}
+
+class _RiskAssessmentCard extends StatelessWidget {
+  const _RiskAssessmentCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      key: const ValueKey('riskAssessmentCard'),
+      padding: const EdgeInsets.all(StevSpace.s5),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Cek risiko diabetes keluargamu',
+                      style: StevType.heading,
+                    ),
+                    const SizedBox(height: StevSpace.s2),
+                    Text(
+                      '8 pertanyaan, 2 menit. Untuk kamu atau orang tuamu.',
+                      style: StevType.body.copyWith(color: StevColors.ink2),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: StevSpace.s3),
+              const StevMascot(mood: StevMood.happy, size: 70),
+            ],
+          ),
+          const SizedBox(height: StevSpace.s5),
+          StevButton(
+            label: 'Mulai cek',
+            variant: StevButtonVariant.leaf,
+            onPressed: () => context.push('/risk'),
+          ),
+        ],
       ),
     );
   }

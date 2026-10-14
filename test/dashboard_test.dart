@@ -32,6 +32,7 @@ void main() {
     expect(find.text('≈14 g'), findsOneWidget);
     expect(find.text('Beranda'), findsOneWidget);
     expect(find.text('Mingguan'), findsOneWidget);
+    expect(find.byKey(const ValueKey('riskAssessmentCard')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
