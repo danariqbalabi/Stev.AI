@@ -10,6 +10,7 @@ import '../domain/drink_recognition.dart';
 
 class RemoteDrinkRecognitionService implements DrinkRecognitionService {
   static const maxImageBytes = 8 * 1024 * 1024;
+  static const minimumConfidence = 0.55;
 
   RemoteDrinkRecognitionService({
     required this.endpoint,
@@ -28,7 +29,7 @@ class RemoteDrinkRecognitionService implements DrinkRecognitionService {
   final List<Drink> catalog;
 
   @override
-  Future<List<Drink>> identify(Uint8List photoBytes) async {
+  Future<List<DrinkRecognitionCandidate>> identify(Uint8List photoBytes) async {
     if (photoBytes.isEmpty) {
       throw const DrinkRecognitionException(
         'Foto kosong. Ambil ulang atau pilih gambar lain.',
@@ -89,7 +90,7 @@ class RemoteDrinkRecognitionService implements DrinkRecognitionService {
     }
   }
 
-  List<Drink> _parseCandidates(String responseBody) {
+  List<DrinkRecognitionCandidate> _parseCandidates(String responseBody) {
     final decoded = jsonDecode(responseBody);
     if (decoded is! Map<String, dynamic>) {
       throw const FormatException('Response root must be an object.');
@@ -101,26 +102,36 @@ class RemoteDrinkRecognitionService implements DrinkRecognitionService {
     }
 
     final seenIds = <String>{};
-    final candidates = <Drink>[];
+    final candidates = <DrinkRecognitionCandidate>[];
     for (final candidate in rawCandidates) {
-      final id = switch (candidate) {
-        String value => value,
-        Map value when value['id'] is String => value['id'] as String,
-        _ => null,
-      };
-      if (id == null || !seenIds.add(id)) continue;
+      if (candidate is! Map || candidate['id'] is! String) continue;
+      final id = candidate['id'] as String;
+      final confidenceValue = candidate['confidence'];
+      if (confidenceValue is! num) continue;
+      final confidence = confidenceValue.toDouble();
+      if (!confidence.isFinite || confidence < minimumConfidence) continue;
+      if (!seenIds.add(id)) continue;
 
       final drink = _findById(id);
-      if (drink != null) candidates.add(drink);
-      if (candidates.length == 3) break;
+      if (drink != null) {
+        candidates.add(
+          DrinkRecognitionCandidate(
+            drink: drink,
+            confidence: confidence.clamp(0.0, 1.0).toDouble(),
+          ),
+        );
+      }
     }
 
     if (candidates.isEmpty) {
       throw const DrinkRecognitionException(
-        'Minuman belum dikenali. Coba foto lain atau cari manual.',
+        'Stev belum yakin dengan minuman ini. Coba foto yang lebih jelas atau cari manual.',
       );
     }
-    return candidates;
+    candidates.sort(
+      (left, right) => right.confidence.compareTo(left.confidence),
+    );
+    return candidates.take(3).toList(growable: false);
   }
 
   Drink? _findById(String id) {

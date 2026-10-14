@@ -30,7 +30,9 @@ void main() {
           requestBody = jsonDecode(request.body) as Map<String, dynamic>;
           return http.Response(
             jsonEncode({
-              'candidates': ['remote-drink'],
+              'candidates': [
+                {'id': 'remote-drink', 'confidence': 0.88},
+              ],
             }),
             200,
           );
@@ -40,7 +42,8 @@ void main() {
       final candidates = await service.identify(Uint8List.fromList([1]));
 
       expect(requestBody['catalogIds'], ['remote-drink']);
-      expect(candidates, [remoteDrink]);
+      expect(candidates.single.drink, remoteDrink);
+      expect(candidates.single.confidence, 0.88);
     });
 
     test('sends the image and maps up to three unique catalog IDs', () async {
@@ -51,11 +54,11 @@ void main() {
           jsonEncode({
             'candidates': [
               {'id': 'hydro-coco', 'confidence': 0.94},
-              'unknown-drink',
+              {'id': 'unknown-drink', 'confidence': 0.99},
               {'id': 'hydro-coco', 'confidence': 0.82},
-              'sprite-botol',
-              'es-jeruk',
-              'matcha',
+              {'id': 'sprite-botol', 'confidence': 0.79},
+              {'id': 'es-jeruk', 'confidence': 0.68},
+              {'id': 'matcha', 'confidence': 0.61},
             ],
           }),
           200,
@@ -77,10 +80,15 @@ void main() {
       expect(body['imageBase64'], base64Encode([1, 2, 3]));
       expect(body['mimeType'], 'image/jpeg');
       expect(body['catalogIds'], contains('hydro-coco'));
-      expect(candidates, [
+      expect(candidates.map((candidate) => candidate.drink), [
         DrinkCatalog.hydroCoco,
         DrinkCatalog.spriteBotol,
         DrinkCatalog.esJeruk,
+      ]);
+      expect(candidates.map((candidate) => candidate.confidence), [
+        0.94,
+        0.79,
+        0.68,
       ]);
     });
 
@@ -131,7 +139,9 @@ void main() {
         client: MockClient(
           (_) async => http.Response(
             jsonEncode({
-              'candidates': ['not-in-catalog'],
+              'candidates': [
+                {'id': 'not-in-catalog', 'confidence': 0.99},
+              ],
             }),
             200,
           ),
@@ -145,6 +155,34 @@ void main() {
       expect(
         () => unknownOnly.identify(Uint8List.fromList([1])),
         throwsA(isA<DrinkRecognitionException>()),
+      );
+    });
+
+    test('rejects candidates below the confidence threshold', () async {
+      final service = RemoteDrinkRecognitionService(
+        endpoint: Uri.parse('https://api.example.com/recognize'),
+        client: MockClient(
+          (_) async => http.Response(
+            jsonEncode({
+              'candidates': [
+                {'id': 'hydro-coco', 'confidence': 0.54},
+                {'id': 'sprite-botol', 'confidence': 0.2},
+              ],
+            }),
+            200,
+          ),
+        ),
+      );
+
+      expect(
+        () => service.identify(Uint8List.fromList([1])),
+        throwsA(
+          isA<DrinkRecognitionException>().having(
+            (error) => error.message,
+            'message',
+            contains('belum yakin'),
+          ),
+        ),
       );
     });
 

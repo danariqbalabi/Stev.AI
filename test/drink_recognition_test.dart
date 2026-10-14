@@ -13,10 +13,15 @@ void main() {
 
     final candidates = await service.identify(Uint8List.fromList([1]));
 
-    expect(candidates, [
+    expect(candidates.map((candidate) => candidate.drink), [
       DrinkCatalog.kopiSusuKalengNescafe,
       DrinkCatalog.esKopiSusuGulaAren,
       DrinkCatalog.bobaMilkTea,
+    ]);
+    expect(candidates.map((candidate) => candidate.confidence), [
+      0.92,
+      0.76,
+      0.63,
     ]);
   });
 
@@ -41,9 +46,18 @@ void main() {
       const MaterialApp(
         home: ConfirmationScreen(
           candidates: [
-            DrinkCatalog.hydroCoco,
-            DrinkCatalog.spriteBotol,
-            DrinkCatalog.esJeruk,
+            DrinkRecognitionCandidate(
+              drink: DrinkCatalog.hydroCoco,
+              confidence: 0.94,
+            ),
+            DrinkRecognitionCandidate(
+              drink: DrinkCatalog.spriteBotol,
+              confidence: 0.81,
+            ),
+            DrinkRecognitionCandidate(
+              drink: DrinkCatalog.esJeruk,
+              confidence: 0.68,
+            ),
           ],
         ),
       ),
@@ -53,6 +67,7 @@ void main() {
     expect(find.text('Hydro Coco'), findsOneWidget);
     expect(find.text('Sprite botol'), findsOneWidget);
     expect(find.text('Es jeruk'), findsOneWidget);
+    expect(find.text('94% cocok'), findsOneWidget);
     expect(find.text('Kopi susu kaleng Nescafe'), findsNothing);
   });
 }

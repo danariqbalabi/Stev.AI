@@ -5,15 +5,27 @@ import '../../drinks/domain/drink.dart';
 class DrinkRecognitionResult {
   DrinkRecognitionResult({
     required this.photoBytes,
-    required Iterable<Drink> candidates,
+    required Iterable<DrinkRecognitionCandidate> candidates,
   }) : candidates = List.unmodifiable(candidates.take(3));
 
   final Uint8List photoBytes;
-  final List<Drink> candidates;
+  final List<DrinkRecognitionCandidate> candidates;
+}
+
+class DrinkRecognitionCandidate {
+  const DrinkRecognitionCandidate({
+    required this.drink,
+    required this.confidence,
+  }) : assert(confidence >= 0 && confidence <= 1);
+
+  final Drink drink;
+  final double confidence;
+
+  int get confidencePercent => (confidence * 100).round();
 }
 
 abstract interface class DrinkRecognitionService {
-  Future<List<Drink>> identify(Uint8List photoBytes);
+  Future<List<DrinkRecognitionCandidate>> identify(Uint8List photoBytes);
 }
 
 class DrinkRecognitionException implements Exception {

@@ -7,7 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/stev_tokens.dart';
 import '../../../shared/widgets/drink_photo.dart';
 import '../../drinks/data/drink_catalog.dart';
-import '../../drinks/domain/drink.dart';
+import '../../recognition/domain/drink_recognition.dart';
 
 class ConfirmationScreen extends StatelessWidget {
   const ConfirmationScreen({
@@ -17,12 +17,21 @@ class ConfirmationScreen extends StatelessWidget {
   });
 
   final Uint8List? capturedPhoto;
-  final List<Drink> candidates;
+  final List<DrinkRecognitionCandidate> candidates;
 
   static const fallbackGuesses = [
-    DrinkCatalog.kopiSusuKalengNescafe,
-    DrinkCatalog.esKopiSusuGulaAren,
-    DrinkCatalog.bobaMilkTea,
+    DrinkRecognitionCandidate(
+      drink: DrinkCatalog.kopiSusuKalengNescafe,
+      confidence: 0.92,
+    ),
+    DrinkRecognitionCandidate(
+      drink: DrinkCatalog.esKopiSusuGulaAren,
+      confidence: 0.76,
+    ),
+    DrinkRecognitionCandidate(
+      drink: DrinkCatalog.bobaMilkTea,
+      confidence: 0.63,
+    ),
   ];
 
   @override
@@ -193,7 +202,7 @@ class _PhotoBackButton extends StatelessWidget {
 class _ConfirmationSheet extends StatelessWidget {
   const _ConfirmationSheet({required this.guesses});
 
-  final List<Drink> guesses;
+  final List<DrinkRecognitionCandidate> guesses;
 
   @override
   Widget build(BuildContext context) {
@@ -230,8 +239,8 @@ class _ConfirmationSheet extends StatelessWidget {
                   _GuessCard(
                     key: index == 0
                         ? const ValueKey('showResultButton')
-                        : ValueKey('guess-${guesses[index].id}'),
-                    drink: guesses[index],
+                        : ValueKey('guess-${guesses[index].drink.id}'),
+                    candidate: guesses[index],
                     recommended: index == 0,
                   ),
                   if (index < guesses.length - 1)
@@ -253,16 +262,22 @@ class _ConfirmationSheet extends StatelessWidget {
 }
 
 class _GuessCard extends StatelessWidget {
-  const _GuessCard({super.key, required this.drink, required this.recommended});
+  const _GuessCard({
+    super.key,
+    required this.candidate,
+    required this.recommended,
+  });
 
-  final Drink drink;
+  final DrinkRecognitionCandidate candidate;
   final bool recommended;
 
   @override
   Widget build(BuildContext context) {
+    final drink = candidate.drink;
     return Semantics(
       button: true,
-      label: '${drink.name}${recommended ? ', paling cocok' : ''}',
+      label:
+          '${drink.name}, keyakinan ${candidate.confidencePercent} persen${recommended ? ', paling cocok' : ''}',
       child: Container(
         height: StevSize.guessCard,
         decoration: BoxDecoration(
@@ -287,11 +302,24 @@ class _GuessCard extends StatelessWidget {
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.only(left: StevSpace.s4),
-                    child: Text(
-                      drink.name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: StevType.label,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          drink.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: StevType.label,
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          '${candidate.confidencePercent}% cocok',
+                          style: StevType.micro.copyWith(
+                            color: StevColors.ink2,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

@@ -73,6 +73,7 @@ Saat ini repository berisi alur MVP awal yang dapat diklik:
 - Home-screen widget Android yang menampilkan sisa gula hari ini dan membuka Scan dalam satu tap.
 - Alur pengenalan foto dengan state loading, error/retry, tiga kandidat dinamis, dan fallback pencarian manual.
 - Client recognition API yang dapat dikonfigurasi saat build, lengkap dengan timeout, validasi response, deduplikasi kandidat, dan fallback otomatis ke adapter demo lokal.
+- Confidence hasil recognition diteruskan ke UI; kandidat di bawah 55% ditolak dan pengguna diarahkan untuk memotret ulang atau mencari manual.
 - Fondasi Supabase untuk katalog remote, schema/RLS, seed 10 minuman, gambar remote, dan fallback offline ke katalog lokal.
 - Personalisasi Dashboard dari nama dan waktu beli minuman yang disimpan saat onboarding.
 - Navigasi Android dan web.
