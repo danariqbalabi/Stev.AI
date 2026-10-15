@@ -4,6 +4,10 @@ enum DrinkCategory { packaged, coffee, tea, boba, juice, custom }
 
 enum DrinkKind { tea, coffee, boba, juice, milk, soda, isotonic, custom }
 
+enum DrinkDataType { label, official, estimated, community, custom }
+
+enum DrinkValidationStatus { demo, verified }
+
 enum SugarLevel {
   normal('Normal', 3),
   less('Less sugar', 2),
@@ -47,6 +51,9 @@ class Drink {
     this.logIdentityId,
     this.photoFit = BoxFit.cover,
     this.photoAlignment = Alignment.center,
+    this.dataType = DrinkDataType.estimated,
+    this.validationStatus = DrinkValidationStatus.demo,
+    this.sourceUrl,
   });
 
   final String id;
@@ -61,6 +68,9 @@ class Drink {
   final String? logIdentityId;
   final BoxFit photoFit;
   final Alignment photoAlignment;
+  final DrinkDataType dataType;
+  final DrinkValidationStatus validationStatus;
+  final String? sourceUrl;
 
   String get identityId => logIdentityId ?? id;
 

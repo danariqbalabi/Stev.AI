@@ -24,6 +24,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
 
     expect(find.text('Hasil scan'), findsOneWidget);
+    expect(find.text('Data demo — belum divalidasi'), findsOneWidget);
     expect(find.text('Es kopi susu gula aren'), findsOneWidget);
     expect(find.text('≈36 g'), findsOneWidget);
     expect(find.text('Masih aman, nih!'), findsOneWidget);
@@ -64,7 +65,9 @@ void main() {
     await tester.ensureVisible(find.byKey(const ValueKey('chooseDrinkButton')));
     await tester.tap(find.byKey(const ValueKey('chooseDrinkButton')));
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
     await tester.pump(const Duration(milliseconds: 600));
+    await tester.pump();
 
     expect(find.byKey(const ValueKey('dashboardScreen')), findsOneWidget);
     expect(find.text('62'), findsOneWidget);

@@ -25,7 +25,8 @@ class SupabaseDrinkCatalogRepository implements DrinkCatalogRepository {
         .from('drinks')
         .select(
           'id,name,category,kind,sugar_grams,estimated,photo_asset,'
-          'image_url,sugar_options(level,sugar_grams)',
+          'image_url,data_type,validation_status,source_url,'
+          'sugar_options(level,sugar_grams)',
         )
         .eq('verified', true)
         .order('name');
@@ -100,6 +101,13 @@ abstract final class SupabaseDrinkCatalogMapper {
     final noSugar = levelsByName['no_sugar'] ?? levelsByName['noSugar'];
     final imageUrl = row['image_url'];
     final photoAsset = row['photo_asset'];
+    final dataType =
+        _enumByName(DrinkDataType.values, row['data_type']) ??
+        DrinkDataType.estimated;
+    final validationStatus =
+        _enumByName(DrinkValidationStatus.values, row['validation_status']) ??
+        DrinkValidationStatus.demo;
+    final sourceUrl = row['source_url'];
     return Drink(
       id: id,
       name: name,
@@ -110,6 +118,11 @@ abstract final class SupabaseDrinkCatalogMapper {
       photoAsset: photoAsset is String ? photoAsset : '',
       photoUrl: imageUrl is String && imageUrl.trim().isNotEmpty
           ? imageUrl
+          : null,
+      dataType: dataType,
+      validationStatus: validationStatus,
+      sourceUrl: sourceUrl is String && sourceUrl.trim().isNotEmpty
+          ? sourceUrl
           : null,
       levels: normal != null && less != null && noSugar != null
           ? SugarLevels(normal: normal, less: less, noSugar: noSugar)

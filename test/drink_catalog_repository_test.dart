@@ -43,6 +43,9 @@ void main() {
         'kind': 'tea',
         'photo_asset': null,
         'image_url': 'https://cdn.example.com/matcha.png',
+        'data_type': 'label',
+        'validation_status': 'verified',
+        'source_url': 'https://example.com/matcha-label',
         'sugar_options': [
           {'level': 'normal', 'sugar_grams': 20},
           {'level': 'less', 'sugar_grams': 12},
@@ -54,6 +57,9 @@ void main() {
       expect(drink!.id, 'remote-matcha');
       expect(drink.photoAsset, isEmpty);
       expect(drink.photoUrl, 'https://cdn.example.com/matcha.png');
+      expect(drink.dataType, DrinkDataType.label);
+      expect(drink.validationStatus, DrinkValidationStatus.verified);
+      expect(drink.sourceUrl, 'https://example.com/matcha-label');
       expect(drink.levels!.gramsFor(SugarLevel.less), 12);
     });
 
