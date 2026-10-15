@@ -24,6 +24,11 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
 
     expect(find.text('Hasil scan'), findsOneWidget);
+    final headerTop = tester.getTopLeft(
+      find.byKey(const ValueKey('resultHeaderLabel')),
+    );
+    final drinkNameTop = tester.getTopLeft(find.text('Es kopi susu gula aren'));
+    expect(headerTop.dy, lessThan(drinkNameTop.dy));
     expect(find.text('Data demo — belum divalidasi'), findsOneWidget);
     expect(find.text('Es kopi susu gula aren'), findsOneWidget);
     expect(find.text('≈36 g'), findsOneWidget);

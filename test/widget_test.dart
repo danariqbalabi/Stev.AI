@@ -23,12 +23,12 @@ void main() {
     // The camera plugin requires a real browser or device, so the shell test
     // continues from the route that receives a captured image.
     appRouter.go('/confirmation');
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 500));
     expect(find.text('Ini minuman apa?'), findsNothing);
     expect(find.text('Pilih yang paling cocok'), findsOneWidget);
 
     await tester.drag(find.byType(Scrollable), const Offset(0, -500));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 500));
     await tester.tap(find.byKey(const ValueKey('showResultButton')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
@@ -38,6 +38,11 @@ void main() {
     await tester.drag(find.byType(Scrollable), const Offset(0, -400));
     await tester.pump(const Duration(milliseconds: 300));
     await tester.tap(find.byKey(const ValueKey('swapButton')));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byKey(const ValueKey('swapOptionsSheet')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('swapOption-0')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('confirmSwapButton')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.byKey(const ValueKey('swapRewardOverlay')), findsOneWidget);

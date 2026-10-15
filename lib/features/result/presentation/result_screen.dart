@@ -10,6 +10,7 @@ import '../../../shared/widgets/drink_photo.dart';
 import '../../drinks/application/drink_log_controller.dart';
 import '../../drinks/domain/drink.dart';
 import '../../drinks/domain/drink_swap.dart';
+import '../../swap/presentation/swap_options_sheet.dart';
 import '../../swap/presentation/swap_reward_overlay.dart';
 
 class ResultScreen extends StatefulWidget {
@@ -38,11 +39,14 @@ class _ResultScreenState extends State<ResultScreen> {
     if (mounted) context.go('/');
   }
 
-  void _openSwap() {
+  Future<void> _openSwap() async {
     HapticFeedback.lightImpact();
     final options = DrinkSwap.optionsFor(_selection);
     if (options.isEmpty) return;
-    showSwapReward(context, current: _selection, option: options.first);
+    final current = _selection;
+    final option = await showSwapOptionsSheet(context, options: options);
+    if (!mounted || option == null) return;
+    await showSwapReward(context, current: current, option: option);
   }
 
   @override
@@ -99,7 +103,12 @@ class _ResultScreenState extends State<ResultScreen> {
                     onSwap: _openSwap,
                   ),
                 ),
-                const _ResultHeader(),
+                const Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: _ResultHeader(),
+                ),
               ],
             );
           },
@@ -176,14 +185,28 @@ class _ResultHeader extends StatelessWidget {
                 alignment: Alignment.centerLeft,
                 child: _PhotoBackButton(onPressed: () => context.pop()),
               ),
-              Text(
-                'Hasil scan',
-                style: StevType.label.copyWith(
-                  color: StevColors.onInk,
-                  fontWeight: StevType.w700,
-                  shadows: const [
-                    Shadow(color: Color(0x80111113), blurRadius: 10),
-                  ],
+              ClipRRect(
+                borderRadius: BorderRadius.circular(StevRadius.pill),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(
+                    sigmaX: StevGlass.photoButtonBlur,
+                    sigmaY: StevGlass.photoButtonBlur,
+                  ),
+                  child: Container(
+                    key: const ValueKey('resultHeaderLabel'),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: StevSpace.s4,
+                      vertical: StevSpace.s2,
+                    ),
+                    color: StevColors.ink.withValues(alpha: 0.46),
+                    child: Text(
+                      'Hasil scan',
+                      style: StevType.label.copyWith(
+                        color: StevColors.onInk,
+                        fontWeight: StevType.w700,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ],

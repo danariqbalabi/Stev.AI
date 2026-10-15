@@ -55,7 +55,7 @@ void main() {
   });
 
   group('swap rules', () {
-    test('moves a non-packaged drink down by one sugar level', () {
+    test('offers every lower sugar level for a non-packaged drink', () {
       const current = DrinkSelection(
         drink: DrinkCatalog.esKopiSusuGulaAren,
         sugarLevel: SugarLevel.normal,
@@ -63,10 +63,13 @@ void main() {
 
       final options = DrinkSwap.optionsFor(current);
 
-      expect(options, hasLength(1));
-      expect(options.single.selection.sugarLevel, SugarLevel.less);
-      expect(options.single.selection.grams, 22);
-      expect(options.single.savedGrams, 14);
+      expect(options, hasLength(2));
+      expect(options[0].selection.sugarLevel, SugarLevel.noSugar);
+      expect(options[0].selection.grams, 6);
+      expect(options[0].savedGrams, 30);
+      expect(options[1].selection.sugarLevel, SugarLevel.less);
+      expect(options[1].selection.grams, 22);
+      expect(options[1].savedGrams, 14);
     });
 
     test('offers only no sugar after less sugar', () {

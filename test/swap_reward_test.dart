@@ -23,6 +23,14 @@ void main() {
     await tester.pumpWidget(StevAiApp(router: router, drinkLogController: log));
     await tester.pump(const Duration(milliseconds: 600));
     await tester.tap(find.byKey(const ValueKey('swapButton')));
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byKey(const ValueKey('swapOptionsSheet')), findsOneWidget);
+    expect(find.text('Tukar jadi apa?'), findsOneWidget);
+    expect(find.byKey(const ValueKey('swapOption-0')), findsOneWidget);
+    expect(find.byKey(const ValueKey('swapOption-1')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('swapOption-1')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('confirmSwapButton')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 1400));
 
@@ -52,6 +60,10 @@ void main() {
     await tester.pumpWidget(StevAiApp(router: router, drinkLogController: log));
     await tester.pump(const Duration(milliseconds: 600));
     await tester.tap(find.byKey(const ValueKey('swapButton')));
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.tap(find.byKey(const ValueKey('swapOption-1')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('confirmSwapButton')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 1400));
     await tester.tap(find.byKey(const ValueKey('chooseSwapButton')));
@@ -83,6 +95,10 @@ void main() {
     await tester.pumpWidget(StevAiApp(router: router, drinkLogController: log));
     await tester.pump(const Duration(milliseconds: 600));
     await tester.tap(find.byKey(const ValueKey('swapButton')));
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.tap(find.byKey(const ValueKey('swapOption-1')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('confirmSwapButton')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 1400));
 
