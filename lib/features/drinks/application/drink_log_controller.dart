@@ -328,6 +328,17 @@ class DrinkLogController extends ChangeNotifier {
         )
         .onError((_, _) {});
   }
+
+  /// Clears the in-memory session during an app-wide data reset without
+  /// writing a new log back to preferences.
+  Future<void> resetLocalState() async {
+    await _pendingWrite;
+    _entries.clear();
+    _savedGrams = 0;
+    _checkedIn = false;
+    _pendingLoggedEvent = null;
+    notifyListeners();
+  }
 }
 
 class DrinkLogScope extends InheritedNotifier<DrinkLogController> {
