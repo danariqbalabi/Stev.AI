@@ -3,6 +3,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 abstract final class LocalDataPreferences {
   static const _appKeyPrefix = 'stev-';
   static const _syncKeyPrefix = 'stev-sync-';
+  static bool _isUserData(String key) =>
+      key.startsWith(_appKeyPrefix) &&
+      !key.startsWith(_syncKeyPrefix) &&
+      !key.startsWith('stev-device-');
   static const revisionKey = 'stev-sync-local-updated-at';
   static const lastSyncedKey = 'stev-sync-last-completed-at';
   static const ownerUserKey = 'stev-sync-owner-user-id';
@@ -41,7 +45,7 @@ abstract final class LocalDataPreferences {
     final preferences = await SharedPreferences.getInstance();
     final result = <String, Object?>{};
     for (final key in preferences.getKeys()) {
-      if (!key.startsWith(_appKeyPrefix) || key.startsWith(_syncKeyPrefix)) {
+      if (!_isUserData(key)) {
         continue;
       }
       final value = preferences.get(key);
@@ -64,17 +68,13 @@ abstract final class LocalDataPreferences {
     final preferences = await SharedPreferences.getInstance();
     final dataKeys = preferences
         .getKeys()
-        .where(
-          (key) =>
-              key.startsWith(_appKeyPrefix) && !key.startsWith(_syncKeyPrefix),
-        )
+        .where(_isUserData)
         .toList(growable: false);
     for (final key in dataKeys) {
       await preferences.remove(key);
     }
     for (final entry in data.entries) {
-      if (!entry.key.startsWith(_appKeyPrefix) ||
-          entry.key.startsWith(_syncKeyPrefix)) {
+      if (!_isUserData(entry.key)) {
         continue;
       }
       final value = entry.value;

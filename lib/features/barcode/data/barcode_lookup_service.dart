@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import '../../../core/config/stev_backend_config.dart';
 import '../../drinks/data/drink_catalog_repository.dart';
 import '../domain/barcode_product.dart';
+import 'barcode_local_store.dart';
 
 class BarcodeLookupService implements BarcodeLookup {
   BarcodeLookupService({
@@ -13,23 +14,56 @@ class BarcodeLookupService implements BarcodeLookup {
     this.supabaseUrl = StevBackendConfig.supabaseUrl,
     this.publishableKey = StevBackendConfig.supabasePublishableKey,
     this.timeout = const Duration(seconds: 12),
-  });
+    BarcodeLocalStore? store,
+    DateTime Function()? now,
+  }) : store = store ?? BarcodeLocalStore(),
+       now = now ?? DateTime.now;
 
   final http.Client? client;
   final String supabaseUrl;
   final String publishableKey;
   final Duration timeout;
-  final _cache = <String, BarcodeProduct>{};
+  final BarcodeLocalStore store;
+  final DateTime Function() now;
+  final _inFlight = <String, Future<BarcodeProduct>>{};
 
   @override
-  Future<BarcodeProduct> lookup(String barcode) async {
+  Future<BarcodeProduct> lookup(String barcode) {
     final code = validRetailBarcode(barcode);
     if (code == null) {
-      throw const BarcodeLookupException(
-        'Barcode tidak valid. Periksa angka di bawah garis barcode.',
+      return Future.error(
+        const BarcodeLookupException(
+          'Barcode tidak valid. Periksa angka di bawah garis barcode.',
+        ),
       );
     }
-    if (_cache[code] case final product?) return product;
+    return _inFlight.putIfAbsent(code, () async {
+      try {
+        return await _lookup(code);
+      } finally {
+        _inFlight.remove(code);
+      }
+    });
+  }
+
+  Future<BarcodeProduct> _lookup(String code) async {
+    final cacheKey = '$supabaseUrl|$code';
+    final cached = await store.read(cacheKey, now());
+    if (cached != null) {
+      try {
+        final product = cached['provider'] == 'catalog'
+            ? _catalogProduct(
+                code,
+                Map<String, Object?>.from(cached['data'] as Map),
+              )
+            : parseOpenFoodFacts(code, cached['data']);
+        if (product != null) {
+          return product.fromCache(DateTime.parse(cached['at'] as String));
+        }
+      } catch (_) {
+        // Corrupt or no-longer-valid cache entries are never nutrition results.
+      }
+    }
     final requestClient = client ?? http.Client();
     try {
       BarcodeProduct? product;
@@ -55,22 +89,12 @@ class BarcodeLookupService implements BarcodeLookup {
             final rows = jsonDecode(response.body);
             if (rows is List && rows.isNotEmpty && rows.first is Map) {
               final row = Map<String, Object?>.from(rows.first as Map);
-              final drink = SupabaseDrinkCatalogMapper.fromRow(row);
-              final ml = _positive(row['serving_ml']);
-              if (drink != null &&
-                  drink.grams.isFinite &&
-                  drink.grams >= 0 &&
-                  ml != null) {
-                product = BarcodeProduct(
-                  barcode: code,
-                  name: drink.name,
-                  sugarGramsPerPortion: drink.grams,
-                  portionLabel: '${_number(ml)} ml (porsi katalog)',
-                  source: 'Katalog Stev.AI',
-                  sourceUrl: drink.sourceUrl ?? '',
-                  imageUrl: drink.photoUrl,
-                  catalogDrink: drink,
-                );
+              product = _catalogProduct(code, row);
+              if (product != null) {
+                await store.write(cacheKey, {
+                  'provider': 'catalog',
+                  'data': row,
+                }, now());
               }
             }
           }
@@ -79,6 +103,8 @@ class BarcodeLookupService implements BarcodeLookup {
         }
       }
       if (product == null) {
+        final retryAt = await store.reserve(now());
+        if (retryAt != null) throw _limited(retryAt);
         final response = await requestClient
             .get(
               Uri.https(
@@ -97,6 +123,11 @@ class BarcodeLookupService implements BarcodeLookup {
               },
             )
             .timeout(timeout);
+        if (response.statusCode == 429) {
+          throw _limited(
+            await store.block(response.headers['retry-after'], now()),
+          );
+        }
         if (response.statusCode == 404) {
           throw const BarcodeLookupException(
             'Produk belum ditemukan. Coba Foto Minuman, cari manual, atau tambah minuman sendiri.',
@@ -107,10 +138,13 @@ class BarcodeLookupService implements BarcodeLookup {
             'Pencarian barcode sedang bermasalah. Coba lagi sebentar.',
           );
         }
-        product = parseOpenFoodFacts(code, jsonDecode(response.body));
+        final decoded = jsonDecode(response.body);
+        product = parseOpenFoodFacts(code, decoded);
+        await store.write(cacheKey, {
+          'provider': 'off',
+          'data': decoded,
+        }, now());
       }
-      if (_cache.length >= 50) _cache.remove(_cache.keys.first);
-      _cache[code] = product;
       return product;
     } on BarcodeLookupException {
       rethrow;
@@ -121,6 +155,36 @@ class BarcodeLookupService implements BarcodeLookup {
     } finally {
       if (client == null) requestClient.close();
     }
+  }
+
+  static BarcodeLookupException _limited(DateTime retryAt) =>
+      BarcodeLookupException(
+        'Pencarian barcode perlu jeda. Kamu tetap bisa scan Label Gizi atau isi label manual.',
+        retryAt: retryAt,
+      );
+
+  static BarcodeProduct? _catalogProduct(
+    String code,
+    Map<String, Object?> row,
+  ) {
+    final drink = SupabaseDrinkCatalogMapper.fromRow(row);
+    final ml = _positive(row['serving_ml']);
+    if (drink == null ||
+        !drink.grams.isFinite ||
+        drink.grams < 0 ||
+        ml == null) {
+      return null;
+    }
+    return BarcodeProduct(
+      barcode: code,
+      name: drink.name,
+      sugarGramsPerPortion: drink.grams,
+      portionLabel: '${_number(ml)} ml (porsi katalog)',
+      source: 'Katalog Stev.AI',
+      sourceUrl: drink.sourceUrl ?? '',
+      imageUrl: drink.photoUrl,
+      catalogDrink: drink,
+    );
   }
 
   static BarcodeProduct parseOpenFoodFacts(String code, Object? decoded) {

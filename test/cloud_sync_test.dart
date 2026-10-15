@@ -85,11 +85,35 @@ void main() {
       OnboardingPreferences.nameKey: 'Danan',
       LocalDataPreferences.revisionKey: '2026-10-15T08:00:00.000Z',
       'unrelated-key': 'keep',
+      'stev-device-barcode-cache-v1': 'device-only',
+      'stev-device-barcode-retry-at': 'device-only',
     });
 
     final exported = await LocalDataPreferences.exportData();
     expect(exported, {OnboardingPreferences.nameKey: 'Danan'});
   });
+
+  test(
+    'cloud restore cannot replace or import device cache and pacing',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        'stev-device-barcode-cache-v1': 'local',
+      });
+      await LocalDataPreferences.importData(
+        {
+          'stev-device-barcode-cache-v1': 'remote',
+          'stev-device-barcode-retry-at': 'remote',
+        },
+        syncedAt: DateTime.utc(2026, 10, 16),
+        userId: 'user',
+      );
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('stev-device-barcode-cache-v1'), 'local');
+      expect(prefs.getString('stev-device-barcode-retry-at'), isNull);
+      await LocalDataPreferences.resetAll();
+      expect(prefs.getString('stev-device-barcode-cache-v1'), isNull);
+    },
+  );
 
   test(
     'a different account never inherits the previous account cache',
