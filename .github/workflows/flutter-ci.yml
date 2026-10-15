@@ -6,6 +6,8 @@ on:
       - main
       - "feat/**"
       - "fix/**"
+      - "chore/**"
+      - "test/**"
   pull_request:
     branches:
       - main
@@ -44,7 +46,7 @@ jobs:
         run: flutter pub get
 
       - name: Check formatting
-        run: dart format --output=none --set-exit-if-changed lib test
+        run: dart format --output=none --set-exit-if-changed lib test tool
 
       - name: Analyze
         run: flutter analyze
