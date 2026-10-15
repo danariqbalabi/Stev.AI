@@ -272,7 +272,20 @@ GitHub Actions menjalankan pemeriksaan yang sama untuk setiap push pada `main`, 
 - Bundle web `build/web` untuk deployment demo.
 - APK debug `app-debug.apk` untuk instalasi pada perangkat Android.
 
-Konfigurasi CI tidak memakai `config/env.local.json` atau secret lokal. Karena itu build CI menggunakan katalog lokal dan adapter recognition demo; konfigurasi Supabase/Gemini tetap diberikan hanya saat deployment yang dipercaya.
+Build verifikasi CI tidak memakai `config/env.local.json` atau secret lokal. Karena itu artifact verifikasi menggunakan katalog lokal dan adapter recognition demo.
+
+### Deployment production Vercel
+
+Push ke `main` baru boleh dipublikasikan setelah job format, analyze, test, web build, dan Android build berhasil. Job `Deploy production web` kemudian:
+
+1. Mengambil konfigurasi client production dari Vercel.
+2. Menjalankan `flutter build web --release` dengan konfigurasi tersebut.
+3. Mengunggah hanya hasil `build/web` ke project `stev-ai`.
+4. Memeriksa root app, `main.dart.js`, dan route `/family`.
+
+Tambahkan satu Actions secret bernama `VERCEL_TOKEN` di **GitHub → Settings → Secrets and variables → Actions**. Gunakan token Vercel khusus CI, bukan token login atau secret Supabase. `SUPABASE_URL`, publishable key, dan endpoint recognition disimpan sebagai Config di environment Production Vercel; ketiganya memang dimasukkan ke aplikasi web dan bukan server secret.
+
+Auto-deploy Git Vercel dinonaktifkan melalui `vercel.json` karena Vercel tidak membangun proyek Flutter secara native. Tanpa pengaturan ini, Vercel dapat mempromosikan deployment kosong sebelum GitHub Actions selesai membangun Flutter.
 
 ## Workflow Git
 
