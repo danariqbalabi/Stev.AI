@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:steviai/app/app.dart';
 import 'package:steviai/app/router.dart';
 import 'package:steviai/core/theme/stev_tokens.dart';
+import 'package:steviai/features/risk_assessment/domain/bmi_calculator.dart';
 import 'package:steviai/features/risk_assessment/domain/risk_assessment.dart';
 import 'package:steviai/features/risk_assessment/presentation/risk_assessment_screen.dart';
 import 'package:steviai/features/risk_assessment/presentation/risk_invite_screen.dart';
@@ -13,6 +14,24 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('RiskAssessment', () {
+    test('calculates BMI locally and maps its score categories', () {
+      final calculation = BmiCalculator.calculate(
+        heightCentimeters: '170',
+        weightKilograms: '60',
+      );
+
+      expect(calculation, isNotNull);
+      expect(calculation!.value, closeTo(20.76, 0.01));
+      expect(calculation.category, BmiCategory.below25);
+      expect(BmiCalculator.categoryFor(25), BmiCategory.from25To30);
+      expect(BmiCalculator.categoryFor(30), BmiCategory.from25To30);
+      expect(BmiCalculator.categoryFor(30.01), BmiCategory.above30);
+      expect(
+        BmiCalculator.calculate(heightCentimeters: '0', weightKilograms: '60'),
+        isNull,
+      );
+    });
+
     test('classifies the demo high-risk answers and ranks factors', () {
       final result = RiskAssessment.evaluate(
         subject: RiskSubject.parent,
@@ -165,16 +184,18 @@ void main() {
     await tester.tap(find.text('Diri sendiri'));
     await tester.pumpAndSettle();
 
-    const answerLabels = [
-      '<45',
-      '<25',
-      'Rendah',
-      'Ya',
-      'Ya',
-      'Tidak',
-      'Tidak',
-      'Tidak ada',
-    ];
+    await tester.tap(find.byKey(const ValueKey('riskOption-<45')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('bmiQuestionStep')), findsOneWidget);
+    await tester.enterText(find.byKey(const ValueKey('bmiHeightField')), '170');
+    await tester.enterText(find.byKey(const ValueKey('bmiWeightField')), '60');
+    await tester.pump();
+    expect(find.text('Kategori <25'), findsOneWidget);
+    await tester.ensureVisible(find.byKey(const ValueKey('bmiContinue')));
+    await tester.tap(find.byKey(const ValueKey('bmiContinue')));
+    await tester.pumpAndSettle();
+
+    const answerLabels = ['Rendah', 'Ya', 'Ya', 'Tidak', 'Tidak', 'Tidak ada'];
     for (final label in answerLabels) {
       await tester.tap(find.byKey(ValueKey('riskOption-$label')));
       await tester.pumpAndSettle();
