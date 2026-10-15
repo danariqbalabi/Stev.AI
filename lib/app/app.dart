@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../core/theme/stev_theme.dart';
 import '../features/drinks/application/drink_log_controller.dart';
 import '../features/drinks/application/drink_catalog_controller.dart';
+import '../features/family/application/family_controller.dart';
 import 'router.dart';
 
 class StevAiApp extends StatefulWidget {
@@ -12,11 +13,13 @@ class StevAiApp extends StatefulWidget {
     this.router,
     this.drinkLogController,
     this.drinkCatalogController,
+    this.familyController,
   });
 
   final GoRouter? router;
   final DrinkLogController? drinkLogController;
   final DrinkCatalogController? drinkCatalogController;
+  final FamilyController? familyController;
 
   @override
   State<StevAiApp> createState() => _StevAiAppState();
@@ -27,6 +30,8 @@ class _StevAiAppState extends State<StevAiApp> {
   late final bool _ownsDrinkLogController;
   late final DrinkCatalogController _drinkCatalogController;
   late final bool _ownsDrinkCatalogController;
+  late final FamilyController _familyController;
+  late final bool _ownsFamilyController;
 
   @override
   void initState() {
@@ -38,37 +43,43 @@ class _StevAiAppState extends State<StevAiApp> {
     _drinkCatalogController =
         widget.drinkCatalogController ??
         DrinkCatalogController.forBackend(null);
+    _ownsFamilyController = widget.familyController == null;
+    _familyController = widget.familyController ?? FamilyController();
   }
 
   @override
   void dispose() {
     if (_ownsDrinkLogController) _drinkLogController.dispose();
     if (_ownsDrinkCatalogController) _drinkCatalogController.dispose();
+    if (_ownsFamilyController) _familyController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return DrinkCatalogScope(
-      controller: _drinkCatalogController,
-      child: DrinkLogScope(
-        controller: _drinkLogController,
-        child: MaterialApp.router(
-          title: 'Stev.AI',
-          debugShowCheckedModeBanner: false,
-          theme: StevTheme.light,
-          routerConfig: widget.router ?? appRouter,
-          builder: (context, child) {
-            return ColoredBox(
-              color: Theme.of(context).colorScheme.surfaceContainer,
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 480),
-                  child: child ?? const SizedBox.shrink(),
+    return FamilyScope(
+      controller: _familyController,
+      child: DrinkCatalogScope(
+        controller: _drinkCatalogController,
+        child: DrinkLogScope(
+          controller: _drinkLogController,
+          child: MaterialApp.router(
+            title: 'Stev.AI',
+            debugShowCheckedModeBanner: false,
+            theme: StevTheme.light,
+            routerConfig: widget.router ?? appRouter,
+            builder: (context, child) {
+              return ColoredBox(
+                color: Theme.of(context).colorScheme.surfaceContainer,
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 480),
+                    child: child ?? const SizedBox.shrink(),
+                  ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
       ),
     );

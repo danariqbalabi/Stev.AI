@@ -9,6 +9,7 @@ import '../features/custom_drink/presentation/custom_drink_screen.dart';
 import '../features/dashboard/presentation/dashboard_screen.dart';
 import '../features/drinks/data/drink_catalog.dart';
 import '../features/drinks/domain/drink.dart';
+import '../features/family/presentation/family_screen.dart';
 import '../features/manual_search/presentation/manual_search_screen.dart';
 import '../features/onboarding/presentation/onboarding_profile_screen.dart';
 import '../features/onboarding/presentation/onboarding_welcome_screen.dart';
@@ -36,6 +37,11 @@ GoRouter createAppRouter({required bool onboardingComplete}) {
             _fadePage(state: state, child: const OnboardingProfileScreen()),
       ),
       GoRoute(path: '/', builder: (context, state) => const DashboardScreen()),
+      GoRoute(
+        path: '/family',
+        pageBuilder: (context, state) =>
+            _fadePage(state: state, child: const FamilyScreen()),
+      ),
       GoRoute(
         path: '/weekly',
         pageBuilder: (context, state) =>
@@ -77,8 +83,14 @@ GoRouter createAppRouter({required bool onboardingComplete}) {
       ),
       GoRoute(
         path: '/risk',
-        pageBuilder: (context, state) =>
-            _fadePage(state: state, child: const RiskAssessmentScreen()),
+        pageBuilder: (context, state) => _fadePage(
+          state: state,
+          child: RiskAssessmentScreen(
+            familyMemberId: state.extra is String
+                ? state.extra! as String
+                : null,
+          ),
+        ),
       ),
       GoRoute(
         path: '/risk/result',
@@ -92,14 +104,18 @@ GoRouter createAppRouter({required bool onboardingComplete}) {
       ),
       GoRoute(
         path: '/risk/invite',
-        pageBuilder: (context, state) => _fadePage(
-          state: state,
-          child: RiskInviteScreen(
-            subject: state.extra is RiskSubject
-                ? state.extra! as RiskSubject
-                : RiskSubject.parent,
-          ),
-        ),
+        pageBuilder: (context, state) {
+          final result = state.extra is RiskAssessmentResult
+              ? state.extra! as RiskAssessmentResult
+              : null;
+          return _fadePage(
+            state: state,
+            child: RiskInviteScreen(
+              subject: result?.subject ?? RiskSubject.parent,
+              familyMemberId: result?.familyMemberId,
+            ),
+          );
+        },
       ),
     ],
   );

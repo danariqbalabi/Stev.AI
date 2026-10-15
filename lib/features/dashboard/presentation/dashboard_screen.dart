@@ -80,6 +80,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       bottomNavigationBar: StevTabBar(
         activeTab: StevTab.home,
         onHome: () {},
+        onFamily: () => context.go('/family'),
         onScan: () => context.push('/scan'),
         onWeekly: () => context.go('/weekly'),
       ),

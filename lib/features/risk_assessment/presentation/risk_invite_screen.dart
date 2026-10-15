@@ -4,6 +4,9 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../core/theme/stev_tokens.dart';
 import '../../../shared/widgets/stev_design_system.dart';
+import '../../family/application/family_controller.dart';
+import '../../family/domain/family_member.dart';
+import '../data/risk_reminder_scheduler.dart';
 import '../domain/risk_assessment.dart';
 
 typedef RiskMessageSharer = Future<void> Function(
@@ -12,13 +15,21 @@ typedef RiskMessageSharer = Future<void> Function(
 );
 
 class RiskInviteScreen extends StatefulWidget {
-  const RiskInviteScreen({super.key, required this.subject, this.shareMessage});
+  const RiskInviteScreen({
+    super.key,
+    required this.subject,
+    this.shareMessage,
+    this.reminderScheduler,
+    this.familyMemberId,
+  });
 
   static const defaultMessage =
       'Bu/Pak, aku habis cek risiko diabetes lewat Stev.AI. Yuk kita cek gula darah gratis di Puskesmas.';
 
   final RiskSubject subject;
   final RiskMessageSharer? shareMessage;
+  final RiskReminderScheduler? reminderScheduler;
+  final String? familyMemberId;
 
   @override
   State<RiskInviteScreen> createState() => _RiskInviteScreenState();
@@ -27,7 +38,11 @@ class RiskInviteScreen extends StatefulWidget {
 class _RiskInviteScreenState extends State<RiskInviteScreen> {
   late final TextEditingController _messageController;
   var _remindInSevenDays = false;
+  var _updatingReminder = false;
   var _sharing = false;
+
+  RiskReminderScheduler get _reminderScheduler =>
+      widget.reminderScheduler ?? LocalRiskReminderScheduler.instance;
 
   @override
   void initState() {
@@ -62,6 +77,11 @@ class _RiskInviteScreenState extends State<RiskInviteScreen> {
           ShareParams(text: message, sharePositionOrigin: origin),
         );
       }
+      if (!mounted) return;
+      if (widget.familyMemberId case final memberId?) {
+        await FamilyScope.read(context)
+            .updateStatus(memberId, FamilyProgressStatus.invited);
+      }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -72,6 +92,42 @@ class _RiskInviteScreenState extends State<RiskInviteScreen> {
       }
     } finally {
       if (mounted) setState(() => _sharing = false);
+    }
+  }
+
+  Future<void> _updateReminder(bool enabled) async {
+    if (_updatingReminder) return;
+    setState(() => _updatingReminder = true);
+
+    if (!enabled) {
+      await _reminderScheduler.cancelReminder();
+      if (mounted) {
+        setState(() {
+          _remindInSevenDays = false;
+          _updatingReminder = false;
+        });
+      }
+      return;
+    }
+
+    final status = await _reminderScheduler.scheduleSevenDayReminder();
+    if (!mounted) return;
+    setState(() {
+      _remindInSevenDays = status == RiskReminderScheduleStatus.scheduled;
+      _updatingReminder = false;
+    });
+    if (status != RiskReminderScheduleStatus.scheduled) {
+      final message = switch (status) {
+        RiskReminderScheduleStatus.denied =>
+          'Izinkan notifikasi agar Stev.AI dapat mengingatkanmu.',
+        RiskReminderScheduleStatus.unsupported =>
+          'Pengingat terjadwal tersedia di aplikasi Android.',
+        RiskReminderScheduleStatus.failed =>
+          'Pengingat belum dapat dijadwalkan. Coba lagi.',
+        RiskReminderScheduleStatus.scheduled => '',
+      };
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
@@ -199,11 +255,12 @@ class _RiskInviteScreenState extends State<RiskInviteScreen> {
                           ),
                           const SizedBox(width: StevSpace.s3),
                           Switch.adaptive(
+                            key: const ValueKey('riskReminderSwitch'),
                             value: _remindInSevenDays,
                             activeTrackColor: StevColors.leaf,
-                            onChanged: (value) {
-                              setState(() => _remindInSevenDays = value);
-                            },
+                            onChanged: _updatingReminder
+                                ? null
+                                : _updateReminder,
                           ),
                         ],
                       ),

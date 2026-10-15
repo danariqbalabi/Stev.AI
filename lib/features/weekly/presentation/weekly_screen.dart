@@ -72,6 +72,7 @@ class _WeeklyScreenState extends State<WeeklyScreen> {
       bottomNavigationBar: StevTabBar(
         activeTab: StevTab.weekly,
         onHome: () => context.go('/'),
+        onFamily: () => context.go('/family'),
         onScan: () => context.push('/scan'),
         onWeekly: () {},
       ),
