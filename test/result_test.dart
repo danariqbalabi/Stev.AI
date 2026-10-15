@@ -70,9 +70,6 @@ void main() {
     // The dashboard counter animation starts after the route transition, so
     // advance it separately before asserting the settled daily total.
     await tester.pump(const Duration(milliseconds: 600));
-    // The dashboard counter animation starts after the route transition, so
-    // advance it separately before asserting the settled daily total.
-    await tester.pump(const Duration(milliseconds: 600));
 
     expect(find.byKey(const ValueKey('dashboardScreen')), findsOneWidget);
     expect(find.text('62'), findsOneWidget);

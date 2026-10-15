@@ -1,0 +1,19 @@
+{
+  "cases": [
+    {
+      "id": "teh-kotak-front-01",
+      "image": "images/teh-kotak-front-01.jpg",
+      "expectedDrinkId": "teh-melati-kotak"
+    },
+    {
+      "id": "nescafe-side-01",
+      "image": "images/nescafe-side-01.jpg",
+      "expectedDrinkId": "kopi-susu-kaleng-nescafe"
+    },
+    {
+      "id": "negative-person-01",
+      "image": "images/negative-person-01.jpg",
+      "expectedDrinkId": null
+    }
+  ]
+}

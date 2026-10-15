@@ -53,3 +53,8 @@ app.*.map.json
 /config/env.local.json
 /supabase/functions/.env
 /supabase/.temp/
+
+# Local recognition evaluation photos and generated reports
+/tool/recognition_dataset/images/
+/tool/recognition_dataset/manifest.json
+/tool/recognition_dataset/*.local.json
