@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:steviai/app/app.dart';
@@ -12,6 +13,21 @@ import 'package:steviai/features/nutrition/presentation/nutrition_confirmation_s
 import 'package:steviai/shared/widgets/stev_button.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          const MethodChannel('plugins.flutter.io/camera'),
+          (call) async => call.method == 'availableCameras' ? [] : null,
+        );
+  });
+  tearDown(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          const MethodChannel('plugins.flutter.io/camera'),
+          null,
+        );
+  });
   for (final known in [true, false]) {
     testWidgets(
       'label confirmation requires valid quantity and acknowledgement (known=$known)',

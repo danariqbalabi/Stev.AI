@@ -11,6 +11,7 @@ import '../../drinks/application/drink_log_controller.dart';
 import '../../drinks/domain/drink.dart';
 import '../data/barcode_lookup_service.dart';
 import '../domain/barcode_product.dart';
+import '../../scan/presentation/scan_mode_switcher.dart';
 
 class BarcodeScanScreen extends StatefulWidget {
   const BarcodeScanScreen({
@@ -47,6 +48,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
   BarcodeProduct? _product;
   bool _loading = false;
   bool _saving = false;
+  bool _navigating = false;
   MobileScannerController? _scanner;
 
   @override
@@ -89,6 +91,8 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
   }
 
   Future<void> _openFallback(String route) async {
+    if (_navigating) return;
+    setState(() => _navigating = true);
     try {
       await _scanner?.stop();
     } catch (_) {
@@ -105,7 +109,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
   }
 
   Future<void> _find(String raw) async {
-    if (_loading || _saving || _product != null) return;
+    if (_loading || _saving || _navigating || _product != null) return;
     final code = validRetailBarcode(raw);
     if (code == null) {
       setState(
@@ -204,6 +208,13 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
           child: ListView(
             padding: const EdgeInsets.all(StevSpace.s5),
             children: [
+              ScanModeSwitcher(
+                selected: ScanMode.barcode,
+                onChanged: _loading || _saving || _navigating
+                    ? null
+                    : (mode) => _openFallback(mode.route),
+              ),
+              const SizedBox(height: StevSpace.s4),
               if (_code == null) ...[
                 Text(
                   'Arahkan ke garis barcode pada kemasan.',

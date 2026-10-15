@@ -25,7 +25,6 @@ import '../features/risk_assessment/presentation/risk_assessment_screen.dart';
 import '../features/risk_assessment/presentation/risk_invite_screen.dart';
 import '../features/risk_assessment/presentation/risk_result_screen.dart';
 import '../features/scan/presentation/scan_screen.dart';
-import '../features/scan/presentation/scan_modes_screen.dart';
 import '../features/weekly/presentation/weekly_screen.dart';
 
 GoRouter createAppRouter({required bool onboardingComplete}) {
@@ -72,21 +71,18 @@ GoRouter createAppRouter({required bool onboardingComplete}) {
       ),
       GoRoute(
         path: '/scan',
-        builder: (context, state) => const ScanModesScreen(),
-        routes: [
-          GoRoute(
-            path: 'photo',
-            builder: (context, state) => const ScanScreen(),
-          ),
-          GoRoute(
-            path: 'barcode',
-            builder: (context, state) => const BarcodeScanScreen(),
-          ),
-          GoRoute(
-            path: 'label',
-            builder: (context, state) => const ScanScreen(labelMode: true),
-          ),
-        ],
+        builder: (context, state) =>
+            const ScanScreen(key: ValueKey('photoCamera')),
+      ),
+      GoRoute(path: '/scan/photo', redirect: (context, state) => '/scan'),
+      GoRoute(
+        path: '/scan/barcode',
+        builder: (context, state) => const BarcodeScanScreen(),
+      ),
+      GoRoute(
+        path: '/scan/label',
+        builder: (context, state) =>
+            const ScanScreen(key: ValueKey('labelCamera'), labelMode: true),
       ),
       GoRoute(
         path: '/nutrition/manual',
