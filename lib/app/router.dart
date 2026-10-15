@@ -22,6 +22,7 @@ import '../features/risk_assessment/presentation/risk_assessment_screen.dart';
 import '../features/risk_assessment/presentation/risk_invite_screen.dart';
 import '../features/risk_assessment/presentation/risk_result_screen.dart';
 import '../features/scan/presentation/scan_screen.dart';
+import '../features/scan/presentation/scan_modes_screen.dart';
 import '../features/weekly/presentation/weekly_screen.dart';
 
 GoRouter createAppRouter({required bool onboardingComplete}) {
@@ -66,7 +67,16 @@ GoRouter createAppRouter({required bool onboardingComplete}) {
           child: const OnboardingProfileScreen(editing: true),
         ),
       ),
-      GoRoute(path: '/scan', builder: (context, state) => const ScanScreen()),
+      GoRoute(
+        path: '/scan',
+        builder: (context, state) => const ScanModesScreen(),
+        routes: [
+          GoRoute(
+            path: 'photo',
+            builder: (context, state) => const ScanScreen(),
+          ),
+        ],
+      ),
       GoRoute(
         path: '/manual',
         pageBuilder: (context, state) =>
