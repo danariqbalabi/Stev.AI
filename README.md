@@ -42,7 +42,7 @@ Untuk minuman kemasan, angka gula direncanakan berasal dari informasi label atau
 ## Alur demo utama
 
 1. Pengguna membuka Dashboard dan menekan **Scan minuman**.
-2. Kamera dibuka untuk mengambil foto minuman atau menu.
+2. Pengguna memilih **Foto Minuman** pada halaman mode scan, lalu mengambil foto minuman atau menu. Pilihan **Barcode** dan **Label Gizi** ditampilkan sebagai **Segera hadir** sampai integrasinya selesai.
 3. Aplikasi memberikan tiga kandidat minuman.
 4. Pengguna memilih kandidat dan level gula jika minuman tidak memiliki label kemasan.
 5. Aplikasi menampilkan estimasi gula, visual sendok, dan sisa referensi harian.
@@ -61,6 +61,7 @@ Saat ini repository berisi alur MVP awal yang dapat diklik:
 - State log minuman harian yang menghitung total secara dinamis dan mengganti entri produk yang sama.
 - Aturan Swap terpusat untuk level gula minuman non-kemasan dan alternatif produk kemasan yang tersedia.
 - Kamera Android/Web dengan preview hasil foto.
+- Halaman pemilihan mode scan sebelum membuka kamera, dengan Foto Minuman aktif dan Barcode/Label Gizi berstatus Segera hadir. Pencarian manual tetap tersedia.
 - Fallback pemilihan gambar dari galeri/file.
 - State izin ditolak, kamera tidak tersedia, dan coba lagi.
 - Konfirmasi minuman sesuai design handoff dengan foto hasil scan, tiga kandidat katalog, dan penanda kandidat paling cocok.
