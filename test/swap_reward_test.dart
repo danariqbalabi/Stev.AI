@@ -57,6 +57,9 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('chooseSwapButton')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
+    // The route transition completes before Dashboard starts its one-shot
+    // 560 ms log flight, so advance that animation separately.
+    await tester.pump(const Duration(milliseconds: 600));
 
     expect(find.byKey(const ValueKey('dashboardScreen')), findsOneWidget);
     expect(find.text('22'), findsOneWidget);

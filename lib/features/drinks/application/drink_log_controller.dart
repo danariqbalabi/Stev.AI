@@ -7,6 +7,16 @@ import '../data/drink_log_preferences.dart';
 import '../domain/drink.dart';
 import '../../weekly/domain/weekly_sugar_summary.dart';
 
+class LoggedDrinkEvent {
+  const LoggedDrinkEvent({
+    required this.selection,
+    required this.previousTotalGrams,
+  });
+
+  final DrinkSelection selection;
+  final double previousTotalGrams;
+}
+
 class DrinkLogController extends ChangeNotifier {
   DrinkLogController({Iterable<DrinkSelection> initialEntries = const []})
     : _entries = List.of(initialEntries),
@@ -59,6 +69,7 @@ class DrinkLogController extends ChangeNotifier {
   final DrinkLogPreferences? _preferences;
   final DateTime? _today;
   double _savedGrams;
+  LoggedDrinkEvent? _pendingLoggedEvent;
   Future<void> _pendingWrite = Future.value();
 
   UnmodifiableListView<DrinkSelection> get entries =>
@@ -68,6 +79,12 @@ class DrinkLogController extends ChangeNotifier {
       _entries.fold(0, (total, selection) => total + selection.grams);
 
   double get savedGrams => _savedGrams;
+
+  LoggedDrinkEvent? takePendingLoggedEvent() {
+    final event = _pendingLoggedEvent;
+    _pendingLoggedEvent = null;
+    return event;
+  }
 
   void log(DrinkSelection selection) {
     _logSelection(selection);
@@ -79,8 +96,13 @@ class DrinkLogController extends ChangeNotifier {
   }
 
   void _logSelection(DrinkSelection selection) {
+    final previousTotalGrams = totalGrams;
     _entries.removeWhere((entry) => entry.identityId == selection.identityId);
     _entries.insert(0, selection);
+    _pendingLoggedEvent = LoggedDrinkEvent(
+      selection: selection,
+      previousTotalGrams: previousTotalGrams,
+    );
     _persist();
     notifyListeners();
   }
