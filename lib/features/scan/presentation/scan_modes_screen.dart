@@ -40,11 +40,12 @@ class ScanModesScreen extends StatelessWidget {
                 onTap: () => context.push('/scan/barcode'),
               ),
               const SizedBox(height: StevSpace.s4),
-              const _ScanModeCard(
-                key: ValueKey('scanMode-label'),
+              _ScanModeCard(
+                key: const ValueKey('scanMode-label'),
                 icon: Icons.document_scanner_outlined,
                 title: 'Label Gizi',
                 description: 'Baca gula dan takaran saji dari tabel Informasi Nilai Gizi.',
+                onTap: () => context.push('/scan/label'),
               ),
               const SizedBox(height: StevSpace.s6),
               Text(

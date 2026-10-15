@@ -9,11 +9,20 @@ import 'package:image_picker/image_picker.dart';
 import '../../recognition/data/drink_recognition_service_factory.dart';
 import '../../recognition/domain/drink_recognition.dart';
 import '../../drinks/application/drink_catalog_controller.dart';
+import '../../nutrition/data/remote_nutrition_label_reader.dart';
+import '../../nutrition/domain/nutrition_label.dart';
 
 class ScanScreen extends StatefulWidget {
-  const ScanScreen({super.key, this.recognitionService});
+  const ScanScreen({
+    super.key,
+    this.recognitionService,
+    this.labelMode = false,
+    this.nutritionReader,
+  });
 
   final DrinkRecognitionService? recognitionService;
+  final bool labelMode;
+  final NutritionLabelReader? nutritionReader;
 
   @override
   State<ScanScreen> createState() => _ScanScreenState();
@@ -31,6 +40,7 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
   bool _isPickingImage = false;
   bool _isRecognizing = false;
   String? _recognitionError;
+  int _cameraGeneration = 0;
 
   @override
   void initState() {
@@ -51,20 +61,22 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (kIsWeb) return;
     final controller = _cameraController;
-    if (controller == null || !controller.value.isInitialized || kIsWeb) {
-      return;
-    }
-
-    if (state == AppLifecycleState.inactive) {
-      _cameraController = null;
-      unawaited(controller.dispose());
-    } else if (state == AppLifecycleState.resumed && _photoBytes == null) {
+    if (state == AppLifecycleState.inactive &&
+        controller != null &&
+        controller.value.isInitialized) {
+      unawaited(_releaseCamera());
+    } else if (state == AppLifecycleState.resumed &&
+        _photoBytes == null &&
+        !_isInitializing &&
+        _cameraController == null) {
       unawaited(_initializeCamera());
     }
   }
 
   Future<void> _initializeCamera() async {
+    final generation = ++_cameraGeneration;
     if (mounted) {
       setState(() {
         _isInitializing = true;
@@ -75,7 +87,9 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
     final previousController = _cameraController;
     _cameraController = null;
     await previousController?.dispose();
+    if (!mounted || generation != _cameraGeneration) return;
 
+    CameraController? pending;
     try {
       final cameras = await availableCameras();
       if (cameras.isEmpty) {
@@ -91,30 +105,50 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
       );
       final controller = CameraController(
         selectedCamera,
-        ResolutionPreset.medium,
+        widget.labelMode ? ResolutionPreset.high : ResolutionPreset.medium,
         enableAudio: false,
         imageFormatGroup: ImageFormatGroup.jpeg,
       );
+      pending = controller;
       await controller.initialize();
 
-      if (!mounted) {
-        await controller.dispose();
+      if (!mounted || generation != _cameraGeneration) {
         return;
       }
 
       if (_photoBytes != null) {
         await _pausePreviewIfSupported(controller);
       }
+      if (!mounted || generation != _cameraGeneration) return;
       setState(() {
         _cameraController = controller;
         _isInitializing = false;
       });
+      pending = null;
     } on CameraException catch (error) {
-      _showCameraError(_messageForCameraError(error));
+      if (generation == _cameraGeneration) {
+        _showCameraError(_messageForCameraError(error));
+      }
     } catch (_) {
-      _showCameraError(
-        'Kamera tidak dapat dimulai. Coba lagi atau pilih foto dari galeri.',
-      );
+      if (generation == _cameraGeneration) {
+        _showCameraError(
+          'Kamera tidak dapat dimulai. Coba lagi atau pilih foto dari galeri.',
+        );
+      }
+    } finally {
+      await pending?.dispose();
+    }
+  }
+
+  Future<void> _releaseCamera() async {
+    ++_cameraGeneration;
+    final controller = _cameraController;
+    _cameraController = null;
+    if (mounted) setState(() => _isInitializing = false);
+    try {
+      await controller?.dispose();
+    } catch (_) {
+      /* The manual path remains available. */
     }
   }
 
@@ -216,6 +250,21 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
     await _initializeCamera();
   }
 
+  Future<void> _openManualLabel() async {
+    await _releaseCamera();
+    if (!mounted) return;
+    final retake = await context.push<bool>('/nutrition/manual');
+    if (mounted && retake == true) {
+      await _retakePhoto();
+      return;
+    }
+    if (mounted &&
+        _photoBytes == null &&
+        ModalRoute.of(context)?.isCurrent == true) {
+      await _initializeCamera();
+    }
+  }
+
   Future<void> _recognizePhoto() async {
     final photoBytes = _photoBytes;
     if (photoBytes == null || _isRecognizing) return;
@@ -225,6 +274,21 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
       _recognitionError = null;
     });
     try {
+      if (widget.labelMode) {
+        final label =
+            await (widget.nutritionReader ?? const RemoteNutritionLabelReader())
+                .read(photoBytes);
+        if (!mounted) return;
+        await _releaseCamera();
+        if (!mounted) return;
+        setState(() => _isRecognizing = false);
+        final retake = await context.push<bool>(
+          '/nutrition/confirm',
+          extra: NutritionScanResult(photoBytes: photoBytes, label: label),
+        );
+        if (mounted && retake == true) await _retakePhoto();
+        return;
+      }
       final candidates = await _recognitionService!.identify(photoBytes);
       if (!mounted) return;
       if (candidates.isEmpty) {
@@ -241,6 +305,12 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
           candidates: candidates,
         ),
       );
+    } on NutritionLabelException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isRecognizing = false;
+        _recognitionError = error.message;
+      });
     } on DrinkRecognitionException catch (error) {
       if (!mounted) return;
       setState(() {
@@ -280,6 +350,7 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    ++_cameraGeneration;
     WidgetsBinding.instance.removeObserver(this);
     unawaited(_cameraController?.dispose());
     super.dispose();
@@ -290,7 +361,15 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
     final hasPhoto = _photoBytes != null;
 
     return Scaffold(
-      appBar: AppBar(title: Text(hasPhoto ? 'Preview foto' : 'Scan minuman')),
+      appBar: AppBar(
+        title: Text(
+          hasPhoto
+              ? 'Preview foto'
+              : widget.labelMode
+              ? 'Scan label gizi'
+              : 'Scan minuman',
+        ),
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
@@ -303,12 +382,20 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
   Widget _buildCameraContent() {
     return Column(
       children: [
-        const Text(
-          'Arahkan kamera ke minuman atau menu. Pastikan nama dan ukuran terlihat jelas.',
+        Text(
+          widget.labelMode
+              ? 'Foto seluruh tabel Informasi Nilai Gizi. Pastikan gula, takaran saji, dan sajian per kemasan terbaca jelas.'
+              : 'Arahkan kamera ke minuman atau menu. Pastikan nama dan ukuran terlihat jelas.',
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 16),
         Expanded(child: _buildCameraViewport()),
+        if (widget.labelMode)
+          TextButton(
+            key: const ValueKey('manualNutritionLabel'),
+            onPressed: _openManualLabel,
+            child: const Text('Isi label manual'),
+          ),
         const SizedBox(height: 20),
         if (_cameraController?.value.isInitialized ?? false)
           FilledButton.icon(
@@ -356,7 +443,7 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
     final controller = _cameraController;
     if (_errorMessage != null || controller == null) {
       return _CameraFrame(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -421,8 +508,10 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
           ),
         ),
         const SizedBox(height: 16),
-        const Text(
-          'Pastikan minuman terlihat jelas sebelum dilanjutkan.',
+        Text(
+          widget.labelMode
+              ? 'Pastikan angka gula dan keterangan per sajian/per kemasan terlihat, tanpa pantulan cahaya.'
+              : 'Pastikan minuman terlihat jelas sebelum dilanjutkan.',
           textAlign: TextAlign.center,
         ),
         if (_recognitionError case final error?) ...[
@@ -445,7 +534,11 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
                 )
               : const Icon(Icons.auto_awesome_outlined),
           label: Text(
-            _isRecognizing ? 'Stev lagi mengenali...' : 'Kenali minuman',
+            _isRecognizing
+                ? (widget.labelMode
+                      ? 'Membaca label...'
+                      : 'Stev lagi mengenali...')
+                : (widget.labelMode ? 'Baca label gizi' : 'Kenali minuman'),
           ),
         ),
         TextButton.icon(
@@ -454,6 +547,12 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
           icon: const Icon(Icons.refresh),
           label: const Text('Foto ulang'),
         ),
+        if (widget.labelMode)
+          TextButton(
+            key: const ValueKey('previewManualNutritionLabel'),
+            onPressed: _isRecognizing ? null : _openManualLabel,
+            child: const Text('Isi label manual'),
+          ),
         TextButton(
           key: const ValueKey('previewManualSearchButton'),
           onPressed: _isRecognizing ? null : () => context.push('/manual'),

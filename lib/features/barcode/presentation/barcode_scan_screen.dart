@@ -283,6 +283,11 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
               ],
               if (!_loading && !_saving) ...[
                 TextButton(
+                  key: const ValueKey('barcodeScanLabel'),
+                  onPressed: () => _openFallback('/scan/label'),
+                  child: const Text('Scan Label Gizi'),
+                ),
+                TextButton(
                   onPressed: () => _openFallback('/scan/photo'),
                   child: const Text('Pakai Foto Minuman'),
                 ),
