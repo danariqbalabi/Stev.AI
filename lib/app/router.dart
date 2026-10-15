@@ -13,6 +13,7 @@ import '../features/family/presentation/family_screen.dart';
 import '../features/manual_search/presentation/manual_search_screen.dart';
 import '../features/onboarding/presentation/onboarding_profile_screen.dart';
 import '../features/onboarding/presentation/onboarding_welcome_screen.dart';
+import '../features/profile/presentation/profile_screen.dart';
 import '../features/result/presentation/result_screen.dart';
 import '../features/recognition/domain/drink_recognition.dart';
 import '../features/risk_assessment/domain/risk_assessment.dart';
@@ -46,6 +47,18 @@ GoRouter createAppRouter({required bool onboardingComplete}) {
         path: '/weekly',
         pageBuilder: (context, state) =>
             _fadePage(state: state, child: const WeeklyScreen()),
+      ),
+      GoRoute(
+        path: '/profile',
+        pageBuilder: (context, state) =>
+            _fadePage(state: state, child: const ProfileScreen()),
+      ),
+      GoRoute(
+        path: '/profile/edit',
+        pageBuilder: (context, state) => _fadePage(
+          state: state,
+          child: const OnboardingProfileScreen(editing: true),
+        ),
       ),
       GoRoute(path: '/scan', builder: (context, state) => const ScanScreen()),
       GoRoute(

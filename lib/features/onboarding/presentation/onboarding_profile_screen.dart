@@ -6,7 +6,9 @@ import '../../../shared/widgets/stev_design_system.dart';
 import '../data/onboarding_preferences.dart';
 
 class OnboardingProfileScreen extends StatefulWidget {
-  const OnboardingProfileScreen({super.key});
+  const OnboardingProfileScreen({super.key, this.editing = false});
+
+  final bool editing;
 
   @override
   State<OnboardingProfileScreen> createState() =>
@@ -19,6 +21,21 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
   final _nameController = TextEditingController();
   String? _selectedTime;
   bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.editing) _loadExistingProfile();
+  }
+
+  Future<void> _loadExistingProfile() async {
+    final profile = await OnboardingPreferences.readProfile();
+    if (!mounted) return;
+    setState(() {
+      _nameController.text = profile.name ?? '';
+      _selectedTime = profile.drinkTime;
+    });
+  }
 
   @override
   void dispose() {
@@ -34,7 +51,12 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
       name: skipDetails ? null : _nameController.text,
       drinkTime: skipDetails ? null : _selectedTime,
     );
-    if (mounted) context.go('/');
+    if (!mounted) return;
+    if (widget.editing && context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/');
+    }
   }
 
   @override
@@ -67,7 +89,12 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
                           onPressed: () => context.pop(),
                         ),
                         const SizedBox(height: 38),
-                        Text('Kenalan dulu, yuk.', style: StevType.title),
+                        Text(
+                          widget.editing
+                              ? 'Ubah profilmu.'
+                              : 'Kenalan dulu, yuk.',
+                          style: StevType.title,
+                        ),
                         const SizedBox(height: StevSpace.s10),
                         Text(
                           'Nama kamu',
@@ -122,21 +149,33 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
                         const SizedBox(height: StevSpace.s6),
                         StevButton(
                           key: const ValueKey('profileStartButton'),
-                          label: _saving ? 'Menyimpan...' : 'Mulai',
+                          label: _saving
+                              ? 'Menyimpan...'
+                              : widget.editing
+                              ? 'Simpan perubahan'
+                              : 'Mulai',
                           onPressed: _saving
                               ? null
                               : () => _finish(skipDetails: false),
                         ),
                         const SizedBox(height: StevSpace.s3),
-                        StevButton(
-                          key: const ValueKey('skipOnboardingButton'),
-                          label: 'Lewati',
-                          variant: StevButtonVariant.ghost,
-                          height: StevSize.tapMin,
-                          onPressed: _saving
-                              ? null
-                              : () => _finish(skipDetails: true),
-                        ),
+                        if (!widget.editing)
+                          StevButton(
+                            key: const ValueKey('skipOnboardingButton'),
+                            label: 'Lewati',
+                            variant: StevButtonVariant.ghost,
+                            height: StevSize.tapMin,
+                            onPressed: _saving
+                                ? null
+                                : () => _finish(skipDetails: true),
+                          )
+                        else
+                          StevButton(
+                            label: 'Batal',
+                            variant: StevButtonVariant.ghost,
+                            height: StevSize.tapMin,
+                            onPressed: _saving ? null : () => context.pop(),
+                          ),
                       ],
                     ),
                   ),

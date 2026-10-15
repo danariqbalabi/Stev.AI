@@ -75,6 +75,7 @@ class _WeeklyScreenState extends State<WeeklyScreen> {
         onFamily: () => context.go('/family'),
         onScan: () => context.push('/scan'),
         onWeekly: () {},
+        onProfile: () => context.go('/profile'),
       ),
     );
   }

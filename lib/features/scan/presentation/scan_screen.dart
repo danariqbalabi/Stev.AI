@@ -209,19 +209,11 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
       _photoBytes = null;
       _recognitionError = null;
     });
-    final controller = _cameraController;
-    if (controller != null && controller.value.isInitialized) {
-      if (kIsWeb) {
-        return;
-      }
-      try {
-        await controller.resumePreview();
-      } on CameraException {
-        await _initializeCamera();
-      }
-    } else {
-      await _initializeCamera();
-    }
+
+    // Restarting the controller is slightly slower than resumePreview, but it
+    // reliably releases and reacquires the browser MediaStream. Reusing the
+    // web controller can otherwise show a black/stale frame after retaking.
+    await _initializeCamera();
   }
 
   Future<void> _recognizePhoto() async {

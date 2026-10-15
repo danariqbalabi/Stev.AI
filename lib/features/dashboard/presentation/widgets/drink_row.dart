@@ -6,9 +6,10 @@ import '../../../../shared/widgets/drink_photo.dart';
 import '../../../drinks/domain/drink.dart';
 
 class DrinkRow extends StatelessWidget {
-  const DrinkRow({super.key, required this.drink});
+  const DrinkRow({super.key, required this.drink, this.onDelete});
 
   final DrinkSelection drink;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -53,8 +54,27 @@ class DrinkRow extends StatelessWidget {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(left: StevSpace.s2, right: 18),
-                  child: Text(drink.displayGrams, style: StevType.listGrams),
+                  padding: const EdgeInsets.only(left: StevSpace.s2, right: 8),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(drink.displayGrams, style: StevType.listGrams),
+                      if (onDelete != null) ...[
+                        const SizedBox(width: 2),
+                        IconButton(
+                          key: ValueKey('deleteDrink-${drink.identityId}'),
+                          onPressed: onDelete,
+                          tooltip: 'Hapus ${drink.drink.name}',
+                          visualDensity: VisualDensity.compact,
+                          icon: const Icon(
+                            Icons.delete_outline_rounded,
+                            color: StevColors.ink2,
+                            size: 20,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ],
             ),

@@ -140,24 +140,9 @@ class _PhotoHeader extends StatelessWidget {
         ),
         child: SizedBox(
           height: StevSize.roundButton,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: _PhotoBackButton(onPressed: () => context.pop()),
-              ),
-              Text(
-                'Ini minuman apa?',
-                style: StevType.label.copyWith(
-                  color: StevColors.onInk,
-                  fontWeight: StevType.w700,
-                  shadows: const [
-                    Shadow(color: Color(0x80111113), blurRadius: 10),
-                  ],
-                ),
-              ),
-            ],
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: _PhotoBackButton(onPressed: () => context.pop()),
           ),
         ),
       ),
