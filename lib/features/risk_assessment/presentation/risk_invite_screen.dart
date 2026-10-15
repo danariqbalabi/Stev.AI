@@ -192,21 +192,9 @@ class _RiskInviteScreenState extends State<RiskInviteScreen> {
                       child: Row(
                         children: [
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Ingatkan aku dalam 7 hari',
-                                  style: StevType.label,
-                                ),
-                                const SizedBox(height: StevSpace.s1),
-                                Text(
-                                  'Tampilan prototipe — belum menjadwalkan notifikasi.',
-                                  style: StevType.caption.copyWith(
-                                    color: StevColors.ink2,
-                                  ),
-                                ),
-                              ],
+                            child: Text(
+                              'Ingatkan aku dalam 7 hari',
+                              style: StevType.label,
                             ),
                           ),
                           const SizedBox(width: StevSpace.s3),

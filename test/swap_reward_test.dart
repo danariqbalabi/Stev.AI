@@ -30,6 +30,7 @@ void main() {
     expect(find.text('Mantap, hemat 14 g!'), findsOneWidget);
     expect(find.text('Es kopi susu gula aren, less sugar'), findsOneWidget);
     expect(find.text('≈22 g'), findsOneWidget);
+    expect(find.text('Lanjut'), findsOneWidget);
     expect(find.byKey(const ValueKey('confetti-0')), findsOneWidget);
     expect(find.byKey(const ValueKey('confetti-11')), findsOneWidget);
   });

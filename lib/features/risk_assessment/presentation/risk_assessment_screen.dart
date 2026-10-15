@@ -53,6 +53,8 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+
     return Scaffold(
       key: const ValueKey('riskAssessmentScreen'),
       body: AuraBackground(
@@ -86,7 +88,9 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
               ),
               Expanded(
                 child: AnimatedSwitcher(
-                  duration: StevMotion.screenFade,
+                  duration: reduceMotion
+                      ? StevMotion.reduced
+                      : StevMotion.screenFade,
                   child: _subject == null
                       ? _SubjectStep(onSelected: _selectSubject)
                       : _QuestionStep(
@@ -124,15 +128,9 @@ class _SubjectStep extends StatelessWidget {
         const Center(child: StevMascot(mood: StevMood.happy, size: 110)),
         const SizedBox(height: StevSpace.s6),
         Text(
-          'Mau cek untuk siapa?',
+          'Cek risiko untuk siapa?',
           textAlign: TextAlign.center,
           style: StevType.title,
-        ),
-        const SizedBox(height: StevSpace.s3),
-        Text(
-          'Jawab 8 pertanyaan singkat untuk melihat gambaran risikonya.',
-          textAlign: TextAlign.center,
-          style: StevType.body.copyWith(color: StevColors.ink2),
         ),
         const SizedBox(height: StevSpace.s7),
         _ChoiceCard(

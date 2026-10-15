@@ -3,8 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:steviai/app/app.dart';
 import 'package:steviai/app/router.dart';
+import 'package:steviai/core/theme/stev_tokens.dart';
 import 'package:steviai/features/risk_assessment/domain/risk_assessment.dart';
+import 'package:steviai/features/risk_assessment/presentation/risk_assessment_screen.dart';
 import 'package:steviai/features/risk_assessment/presentation/risk_invite_screen.dart';
+import 'package:steviai/features/risk_assessment/presentation/risk_result_screen.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -89,6 +92,57 @@ void main() {
     });
   });
 
+  testWidgets('uses the final risk labels and minimum estimate treatment', (
+    tester,
+  ) async {
+    const result = RiskAssessmentResult(
+      subject: RiskSubject.parent,
+      level: RiskLevel.low,
+      isMinimumEstimate: true,
+      topFactors: [],
+      score: 0,
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(home: RiskResultScreen(result: result)),
+    );
+
+    expect(find.text('Rendah'), findsOneWidget);
+    expect(find.text('Estimasi minimal'), findsOneWidget);
+    expect(find.textContaining('karena ada jawaban'), findsNothing);
+    expect(
+      find.ancestor(
+        of: find.byKey(const ValueKey('minimumEstimateLabel')),
+        matching: find.byType(Row),
+      ),
+      findsWidgets,
+    );
+
+    final pill = tester.widget<Container>(
+      find.byKey(const ValueKey('riskLevelPill')),
+    );
+    final decoration = pill.decoration! as BoxDecoration;
+    expect(decoration.color, StevColors.ink);
+  });
+
+  testWidgets('uses the reduced transition duration when motion is disabled', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: MediaQuery(
+          data: MediaQueryData(disableAnimations: true),
+          child: RiskAssessmentScreen(),
+        ),
+      ),
+    );
+
+    final switcher = tester.widget<AnimatedSwitcher>(
+      find.byType(AnimatedSwitcher),
+    );
+    expect(switcher.duration, StevMotion.reduced);
+  });
+
   testWidgets('completes the low-risk flow without showing a raw score', (
     tester,
   ) async {
@@ -103,7 +157,7 @@ void main() {
     await tester.pumpWidget(StevAiApp(router: router));
     await tester.pumpAndSettle();
 
-    expect(find.text('Mau cek untuk siapa?'), findsOneWidget);
+    expect(find.text('Cek risiko untuk siapa?'), findsOneWidget);
     expect(
       find.textContaining('Jawaban diproses di perangkatmu'),
       findsOneWidget,
@@ -127,7 +181,7 @@ void main() {
     }
 
     expect(find.byKey(const ValueKey('riskResultScreen')), findsOneWidget);
-    expect(find.text('Risiko rendah'), findsOneWidget);
+    expect(find.text('Rendah'), findsOneWidget);
     expect(find.text('Belum ada faktor utama'), findsOneWidget);
     expect(find.text('0'), findsNothing);
     expect(

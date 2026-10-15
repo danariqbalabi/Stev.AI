@@ -39,7 +39,7 @@ class _CustomDrinkScreenState extends State<CustomDrinkScreen> {
   }
 
   void _updateSpoons(int change) {
-    setState(() => _spoons = (_spoons + change).clamp(0, 999));
+    setState(() => _spoons = (_spoons + change).clamp(1, 999));
   }
 
   void _updateSyrupPumps(int change) {
@@ -75,7 +75,7 @@ class _CustomDrinkScreenState extends State<CustomDrinkScreen> {
                           value: _spoons,
                           minusKey: const ValueKey('spoonsMinus'),
                           plusKey: const ValueKey('spoonsPlus'),
-                          onMinus: _spoons == 0
+                          onMinus: _spoons == 1
                               ? null
                               : () => _updateSpoons(-1),
                           onPlus: () => _updateSpoons(1),
