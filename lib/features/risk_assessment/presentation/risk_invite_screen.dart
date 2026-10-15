@@ -4,6 +4,8 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../core/theme/stev_tokens.dart';
 import '../../../shared/widgets/stev_design_system.dart';
+import '../../family/application/family_controller.dart';
+import '../../family/domain/family_member.dart';
 import '../data/risk_reminder_scheduler.dart';
 import '../domain/risk_assessment.dart';
 
@@ -18,6 +20,7 @@ class RiskInviteScreen extends StatefulWidget {
     required this.subject,
     this.shareMessage,
     this.reminderScheduler,
+    this.familyMemberId,
   });
 
   static const defaultMessage =
@@ -26,6 +29,7 @@ class RiskInviteScreen extends StatefulWidget {
   final RiskSubject subject;
   final RiskMessageSharer? shareMessage;
   final RiskReminderScheduler? reminderScheduler;
+  final String? familyMemberId;
 
   @override
   State<RiskInviteScreen> createState() => _RiskInviteScreenState();
@@ -72,6 +76,11 @@ class _RiskInviteScreenState extends State<RiskInviteScreen> {
         await SharePlus.instance.share(
           ShareParams(text: message, sharePositionOrigin: origin),
         );
+      }
+      if (!mounted) return;
+      if (widget.familyMemberId case final memberId?) {
+        await FamilyScope.read(context)
+            .updateStatus(memberId, FamilyProgressStatus.invited);
       }
     } catch (_) {
       if (mounted) {

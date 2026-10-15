@@ -1,13 +1,19 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/stev_tokens.dart';
 import '../../../shared/widgets/stev_design_system.dart';
+import '../../family/application/family_controller.dart';
+import '../../family/domain/family_member.dart';
 import '../domain/bmi_calculator.dart';
 import '../domain/risk_assessment.dart';
 
 class RiskAssessmentScreen extends StatefulWidget {
-  const RiskAssessmentScreen({super.key});
+  const RiskAssessmentScreen({super.key, this.familyMemberId});
+
+  final String? familyMemberId;
 
   @override
   State<RiskAssessmentScreen> createState() => _RiskAssessmentScreenState();
@@ -22,6 +28,12 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
   );
   final _heightController = TextEditingController();
   final _weightController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.familyMemberId != null) _subject = RiskSubject.parent;
+  }
 
   @override
   void dispose() {
@@ -57,7 +69,14 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
     final result = RiskAssessment.evaluate(
       subject: _subject!,
       answers: _answers.whereType<RiskOption>().toList(),
+      familyMemberId: widget.familyMemberId,
     );
+    if (widget.familyMemberId case final memberId?) {
+      unawaited(
+        FamilyScope.read(context)
+            .updateStatus(memberId, FamilyProgressStatus.assessed),
+      );
+    }
     context.pushReplacement('/risk/result', extra: result);
   }
 

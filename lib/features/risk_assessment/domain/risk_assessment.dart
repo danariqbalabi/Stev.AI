@@ -38,12 +38,14 @@ class RiskAssessmentResult {
     required this.isMinimumEstimate,
     required this.topFactors,
     required this.score,
+    this.familyMemberId,
   });
 
   final RiskSubject subject;
   final RiskLevel level;
   final bool isMinimumEstimate;
   final List<String> topFactors;
+  final String? familyMemberId;
 
   /// Kept in memory for evaluation only. It is never shown or persisted.
   final int score;
@@ -159,6 +161,7 @@ abstract final class RiskAssessment {
   static RiskAssessmentResult evaluate({
     required RiskSubject subject,
     required List<RiskOption> answers,
+    String? familyMemberId,
   }) {
     assert(answers.length == questions.length);
     final score = answers.fold<int>(
@@ -182,6 +185,7 @@ abstract final class RiskAssessment {
           .take(3)
           .toList(growable: false),
       score: score,
+      familyMemberId: familyMemberId,
     );
   }
 }

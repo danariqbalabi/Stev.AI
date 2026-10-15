@@ -6,19 +6,21 @@ import 'package:flutter/material.dart';
 import '../../core/theme/stev_tokens.dart';
 import 'stev_brand.dart';
 
-enum StevTab { home, weekly }
+enum StevTab { home, family, weekly }
 
 class StevTabBar extends StatelessWidget {
   const StevTabBar({
     super.key,
     required this.activeTab,
     required this.onHome,
+    required this.onFamily,
     required this.onScan,
     required this.onWeekly,
   });
 
   final StevTab activeTab;
   final VoidCallback onHome;
+  final VoidCallback onFamily;
   final VoidCallback onScan;
   final VoidCallback onWeekly;
 
@@ -50,17 +52,34 @@ class StevTabBar extends StatelessWidget {
                     child: Row(
                       children: [
                         Expanded(
-                          child: _TabItem(
-                            icon: StevIconName.home,
-                            label: 'Beranda',
-                            selected: activeTab == StevTab.home,
-                            onPressed: onHome,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _TabItem(
+                                  icon: const StevIcon(StevIconName.home),
+                                  label: 'Beranda',
+                                  selected: activeTab == StevTab.home,
+                                  onPressed: onHome,
+                                ),
+                              ),
+                              Expanded(
+                                child: _TabItem(
+                                  icon: const Icon(
+                                    Icons.people_alt_outlined,
+                                    size: 24,
+                                  ),
+                                  label: 'Keluarga',
+                                  selected: activeTab == StevTab.family,
+                                  onPressed: onFamily,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         const SizedBox(width: 92),
                         Expanded(
                           child: _TabItem(
-                            icon: StevIconName.weekly,
+                            icon: const StevIcon(StevIconName.weekly),
                             label: 'Mingguan',
                             selected: activeTab == StevTab.weekly,
                             onPressed: onWeekly,
@@ -88,7 +107,7 @@ class _TabItem extends StatelessWidget {
     required this.onPressed,
   });
 
-  final StevIconName icon;
+  final Widget icon;
   final String label;
   final bool selected;
   final VoidCallback onPressed;
@@ -109,7 +128,13 @@ class _TabItem extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                StevIcon(icon, color: color),
+                IconTheme(
+                  data: IconThemeData(color: color),
+                  child: ColorFiltered(
+                    colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+                    child: icon,
+                  ),
+                ),
                 const SizedBox(height: StevSpace.s1),
                 Text(label, style: StevType.micro.copyWith(color: color)),
               ],

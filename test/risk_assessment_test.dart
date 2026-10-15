@@ -133,7 +133,7 @@ void main() {
     expect(
       find.ancestor(
         of: find.byKey(const ValueKey('minimumEstimateLabel')),
-        matching: find.byType(Row),
+        matching: find.byType(Wrap),
       ),
       findsWidgets,
     );

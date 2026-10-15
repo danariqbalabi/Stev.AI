@@ -100,8 +100,11 @@ class RiskResultScreen extends StatelessWidget {
               ),
               const SizedBox(height: StevSpace.s5),
               Center(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
+                child: Wrap(
+                  alignment: WrapAlignment.center,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: StevSpace.s3,
+                  runSpacing: StevSpace.s2,
                   children: [
                     Container(
                       key: const ValueKey('riskLevelPill'),
@@ -119,7 +122,6 @@ class RiskResultScreen extends StatelessWidget {
                       ),
                     ),
                     if (result.isMinimumEstimate) ...[
-                      const SizedBox(width: StevSpace.s3),
                       Text(
                         'Estimasi minimal',
                         key: const ValueKey('minimumEstimateLabel'),
@@ -194,8 +196,7 @@ class RiskResultScreen extends StatelessWidget {
                   key: const ValueKey('openRiskInvite'),
                   label: 'Ajak Ibu/Bapak periksa',
                   variant: StevButtonVariant.leaf,
-                  onPressed: () =>
-                      context.push('/risk/invite', extra: result.subject),
+                  onPressed: () => context.push('/risk/invite', extra: result),
                 ),
                 const SizedBox(height: StevSpace.s3),
               ],
