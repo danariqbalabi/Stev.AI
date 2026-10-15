@@ -45,12 +45,9 @@ class DrinkLogController extends ChangeNotifier {
   }) async {
     final storage = preferences ?? DrinkLogPreferences();
     final today = now ?? DateTime.now();
+    await storage.removeLegacyDemoSeed(today, demoEntries);
     final storedDay = await storage.readDay(today);
-    final lastActiveDate = await storage.readLastActiveDate();
-    final isFirstPersistentLaunch = lastActiveDate == null;
-    final initialEntries =
-        storedDay?.entries ??
-        (isFirstPersistentLaunch ? demoEntries : const <DrinkSelection>[]);
+    final initialEntries = storedDay?.entries ?? const <DrinkSelection>[];
     final savedGrams = storedDay?.savedGrams ?? 0;
 
     if (storedDay == null) {
@@ -79,6 +76,8 @@ class DrinkLogController extends ChangeNotifier {
       _entries.fold(0, (total, selection) => total + selection.grams);
 
   double get savedGrams => _savedGrams;
+
+  DateTime get currentDate => _today ?? DateTime.now();
 
   LoggedDrinkEvent? takePendingLoggedEvent() {
     final event = _pendingLoggedEvent;
@@ -124,6 +123,22 @@ class DrinkLogController extends ChangeNotifier {
   }
 
   Future<void> flush() => _pendingWrite;
+
+  Future<StoredDrinkLog?> loadDay(DateTime date) async {
+    await _pendingWrite;
+    final preferences = _preferences;
+    if (preferences == null) {
+      final current = currentDate;
+      final isCurrentDay =
+          current.year == date.year &&
+          current.month == date.month &&
+          current.day == date.day;
+      return isCurrentDay
+          ? StoredDrinkLog(entries: _entries, savedGrams: _savedGrams)
+          : null;
+    }
+    return preferences.readDay(date);
+  }
 
   Future<WeeklySugarSummary> loadWeeklySummary({DateTime? anchor}) async {
     await _pendingWrite;

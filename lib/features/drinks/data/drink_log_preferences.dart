@@ -21,6 +21,31 @@ class StoredDrinkLog {
 class DrinkLogPreferences {
   static const _keyPrefix = 'stev-drink-log-v1';
   static const lastActiveDateKey = 'stev-drink-log-last-active-date';
+  static const legacyDemoMigrationKey = 'stev-drink-log-demo-migrated-v2';
+
+  Future<void> removeLegacyDemoSeed(
+    DateTime date,
+    Iterable<DrinkSelection> demoEntries,
+  ) async {
+    final preferences = await SharedPreferences.getInstance();
+    if (preferences.getBool(legacyDemoMigrationKey) ?? false) return;
+
+    final stored = await readDay(date);
+    final expected = demoEntries.toList(growable: false);
+    final isLegacyDemo =
+        stored != null &&
+        stored.savedGrams == 0 &&
+        stored.entries.length == expected.length &&
+        stored.entries.every(
+          (entry) => expected.any(
+            (demo) =>
+                demo.identityId == entry.identityId &&
+                demo.grams == entry.grams,
+          ),
+        );
+    if (isLegacyDemo) await preferences.remove(_keyFor(date));
+    await preferences.setBool(legacyDemoMigrationKey, true);
+  }
 
   Future<List<DrinkSelection>?> read(DateTime date) async {
     return (await readDay(date))?.entries;

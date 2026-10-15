@@ -24,7 +24,7 @@ void main() {
     // continues from the route that receives a captured image.
     appRouter.go('/confirmation');
     await tester.pumpAndSettle();
-    expect(find.text('Ini minuman apa?'), findsOneWidget);
+    expect(find.text('Ini minuman apa?'), findsNothing);
     expect(find.text('Pilih yang paling cocok'), findsOneWidget);
 
     await tester.drag(find.byType(Scrollable), const Offset(0, -500));

@@ -20,7 +20,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('confirmationScreen')), findsOneWidget);
-    expect(find.text('Ini minuman apa?'), findsOneWidget);
+    expect(find.text('Ini minuman apa?'), findsNothing);
     expect(find.text('Pilih yang paling cocok'), findsOneWidget);
     expect(find.text('Kopi susu kaleng Nescafe'), findsOneWidget);
     expect(find.text('Es kopi susu gula aren'), findsOneWidget);

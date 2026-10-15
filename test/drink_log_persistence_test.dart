@@ -9,34 +9,51 @@ import 'package:steviai/features/drinks/domain/drink.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test(
-    'first persistent launch keeps the demo and restores later changes',
-    () async {
-      SharedPreferences.setMockInitialValues({});
-      final date = DateTime(2026, 10, 12);
+  test('first persistent launch is empty and restores later changes', () async {
+    SharedPreferences.setMockInitialValues({});
+    final date = DateTime(2026, 10, 12);
 
-      final first = await DrinkLogController.persistent(now: date);
-      addTearDown(first.dispose);
-      expect(first.totalGrams, 32);
+    final first = await DrinkLogController.persistent(now: date);
+    addTearDown(first.dispose);
+    expect(first.totalGrams, 0);
 
-      final customDrink = CustomDrink.create(
-        id: 'custom-persisted',
-        name: 'Es kopi racikan',
-        spoons: 2,
-        syrupPumps: 1,
-      );
-      first.log(DrinkSelection(drink: customDrink));
-      await first.flush();
+    final customDrink = CustomDrink.create(
+      id: 'custom-persisted',
+      name: 'Es kopi racikan',
+      spoons: 2,
+      syrupPumps: 1,
+    );
+    first.log(DrinkSelection(drink: customDrink));
+    await first.flush();
 
-      final restored = await DrinkLogController.persistent(now: date);
-      addTearDown(restored.dispose);
-      expect(restored.entries.first.drink.id, 'custom-persisted');
-      expect(restored.entries.first.drink.name, 'Es kopi racikan');
-      expect(restored.entries.first.grams, 30);
-      expect(restored.entries.first.drink.estimated, isTrue);
-      expect(restored.totalGrams, 62);
-    },
-  );
+    final restored = await DrinkLogController.persistent(now: date);
+    addTearDown(restored.dispose);
+    expect(restored.entries.first.drink.id, 'custom-persisted');
+    expect(restored.entries.first.drink.name, 'Es kopi racikan');
+    expect(restored.entries.first.grams, 30);
+    expect(restored.entries.first.drink.estimated, isTrue);
+    expect(restored.totalGrams, 30);
+  });
+
+  test('legacy dashboard demo is removed once', () async {
+    SharedPreferences.setMockInitialValues({});
+    final date = DateTime(2026, 10, 12);
+    final storage = DrinkLogPreferences();
+    await storage.write(date, DrinkLogController.demoEntries);
+
+    final controller = await DrinkLogController.persistent(
+      preferences: storage,
+      now: date,
+    );
+    addTearDown(controller.dispose);
+
+    expect(controller.entries, isEmpty);
+    final preferences = await SharedPreferences.getInstance();
+    expect(
+      preferences.getBool(DrinkLogPreferences.legacyDemoMigrationKey),
+      isTrue,
+    );
+  });
 
   test('a new calendar day starts with an empty daily log', () async {
     SharedPreferences.setMockInitialValues({});
@@ -45,7 +62,7 @@ void main() {
 
     final first = await DrinkLogController.persistent(now: firstDay);
     addTearDown(first.dispose);
-    expect(first.totalGrams, 32);
+    expect(first.totalGrams, 0);
 
     final next = await DrinkLogController.persistent(now: nextDay);
     addTearDown(next.dispose);
