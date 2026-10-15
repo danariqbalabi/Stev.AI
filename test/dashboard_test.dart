@@ -3,6 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:steviai/app/app.dart';
 import 'package:steviai/app/router.dart';
+import 'package:steviai/features/drinks/application/drink_log_controller.dart';
+import 'package:steviai/features/drinks/data/drink_catalog.dart';
+import 'package:steviai/features/drinks/domain/drink.dart';
 import 'package:steviai/features/onboarding/data/onboarding_preferences.dart';
 
 void main() {
@@ -76,5 +79,32 @@ void main() {
       find.text('Sore biasanya waktu kamu beli minum. Cek gulanya dulu, yuk.'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('newly logged drinks animate into the first dashboard row', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final drinkLog = DrinkLogController();
+    final router = createAppRouter(onboardingComplete: true);
+    addTearDown(router.dispose);
+    addTearDown(drinkLog.dispose);
+    drinkLog.log(const DrinkSelection(drink: DrinkCatalog.esKopiSusuGulaAren));
+
+    await tester.pumpWidget(
+      StevAiApp(router: router, drinkLogController: drinkLog),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
+
+    expect(find.byKey(const ValueKey('loggedDrinkFlight')), findsOneWidget);
+    expect(find.text('Es kopi susu gula aren'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.byKey(const ValueKey('loggedDrinkFlight')), findsNothing);
+    expect(drinkLog.takePendingLoggedEvent(), isNull);
   });
 }
