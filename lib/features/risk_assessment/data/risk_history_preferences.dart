@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../domain/risk_assessment.dart';
+import '../../profile/data/local_data_preferences.dart';
 
 class RiskHistoryEntry {
   const RiskHistoryEntry({
@@ -77,6 +78,7 @@ class RiskHistoryPreferences {
       storageKey,
       jsonEncode(next.map(_toJson).toList(growable: false)),
     );
+    await LocalDataPreferences.touch();
   }
 
   Future<void> remove(String id) async {
@@ -87,17 +89,20 @@ class RiskHistoryPreferences {
     final preferences = await SharedPreferences.getInstance();
     if (next.isEmpty) {
       await preferences.remove(storageKey);
+      await LocalDataPreferences.touch();
       return;
     }
     await preferences.setString(
       storageKey,
       jsonEncode(next.map(_toJson).toList(growable: false)),
     );
+    await LocalDataPreferences.touch();
   }
 
   Future<void> clear() async {
     final preferences = await SharedPreferences.getInstance();
     await preferences.remove(storageKey);
+    await LocalDataPreferences.touch();
   }
 
   static Map<String, Object?> _toJson(RiskHistoryEntry entry) => {

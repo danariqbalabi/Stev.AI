@@ -56,7 +56,7 @@ abstract final class DrinkSwap {
   static List<SwapOption> _levelOptions(DrinkSelection current) {
     final level = current.sugarLevel ?? SugarLevel.normal;
     final targetLevels = switch (level) {
-      SugarLevel.normal => const [SugarLevel.less],
+      SugarLevel.normal => const [SugarLevel.less, SugarLevel.noSugar],
       SugarLevel.less => const [SugarLevel.noSugar],
       SugarLevel.noSugar => const <SugarLevel>[],
     };

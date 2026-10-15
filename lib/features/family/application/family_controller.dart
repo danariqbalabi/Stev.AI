@@ -98,6 +98,15 @@ class FamilyController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> reloadLocalState() async {
+    final preferences = _preferences;
+    if (preferences == null) return;
+    _members
+      ..clear()
+      ..addAll(await preferences.read());
+    notifyListeners();
+  }
+
   Future<void> _commit() async {
     notifyListeners();
     await _preferences?.write(_members);

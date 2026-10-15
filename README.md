@@ -126,7 +126,7 @@ Font Onest disimpan lokal agar konsisten pada Android dan web. Lisensi SIL Open 
 - Pengumpulan dataset foto independen dan evaluasi recognition berkala.
 - Rate limiting, abuse protection, dan observability backend production.
 - Validasi sumber kandungan gula oleh tim sebelum data demo dipromosikan menjadi data terverifikasi.
-- Sinkronisasi akun/keluarga lintas perangkat jika kebutuhan produk sudah tervalidasi dan persetujuan privasinya jelas.
+- Sinkronisasi per-record dan audit perubahan jika penggunaan lintas perangkat berkembang di luar kebutuhan MVP.
 - Dukungan kategori makanan.
 
 ## Teknologi
@@ -141,6 +141,7 @@ Font Onest disimpan lokal agar konsisten pada Android dan web. Lisensi SIL Open 
 - Android dan Flutter Web dari satu codebase.
 - Supabase/PostgreSQL untuk katalog remote, dengan Row Level Security dan fallback data lokal.
 - Supabase Auth untuk akun email opsional; aplikasi tetap dapat dipakai sebagai tamu.
+- Sinkronisasi snapshot data pengguna yang offline-first dan dilindungi RLS per akun.
 - Backend/Edge Function untuk menjaga API key layanan AI agar tidak tersimpan di client.
 - Git dan GitHub dengan branch per fitur.
 
@@ -268,7 +269,9 @@ Login dan pendaftaran email otomatis aktif saat konfigurasi Supabase di atas val
 3. Isi **Site URL** dengan URL production, misalnya `https://stev-ai.vercel.app`.
 4. Tambahkan `http://localhost:*` pada Redirect URLs untuk development lokal.
 
-Pengguna tetap dapat memilih mode tamu. Fitur akun pada tahap ini menyediakan identitas dan session persisten; pemindahan log minuman dan data keluarga ke cloud dikerjakan pada fitur sinkronisasi berikutnya.
+Pengguna tetap dapat memilih mode tamu. Setelah login, data lokal dapat disinkronkan ke akun dan dipulihkan pada perangkat lain.
+
+Jalankan juga migration `supabase/migrations/202610150002_create_user_data_snapshots.sql` untuk mengaktifkan sinkronisasi. Snapshot mencakup profil, log harian, streak, keluarga, dan riwayat risiko. RLS memastikan setiap akun hanya dapat membaca, menulis, atau menghapus snapshot miliknya sendiri. Perubahan tetap disimpan lokal terlebih dahulu; tombol sinkronisasi tersedia di halaman Profil dan sinkronisasi juga dijalankan setelah login.
 
 ## Pemeriksaan kualitas
 

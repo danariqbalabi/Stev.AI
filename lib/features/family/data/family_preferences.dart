@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../domain/family_member.dart';
+import '../../profile/data/local_data_preferences.dart';
 
 class FamilyPreferences {
   static const storageKey = 'stev-family-members-v1';
@@ -31,6 +32,7 @@ class FamilyPreferences {
       storageKey,
       jsonEncode(members.map(_toJson).toList(growable: false)),
     );
+    await LocalDataPreferences.touch();
   }
 
   static Map<String, Object?> _toJson(FamilyMember member) => {

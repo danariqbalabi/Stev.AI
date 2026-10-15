@@ -13,6 +13,8 @@ import 'features/home_widget/application/home_widget_bridge.dart';
 import 'features/family/application/family_controller.dart';
 import 'features/onboarding/data/onboarding_preferences.dart';
 import 'features/risk_assessment/data/risk_reminder_scheduler.dart';
+import 'features/sync/application/cloud_sync_controller.dart';
+import 'features/sync/data/supabase_cloud_sync_gateway.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,6 +27,12 @@ Future<void> main() async {
   final onboardingComplete = await OnboardingPreferences.isComplete();
   final drinkLogController = await DrinkLogController.persistent();
   final familyController = await FamilyController.persistent();
+  final cloudSyncController = CloudSyncController(
+    auth: authController,
+    gateway: SupabaseCloudSyncGateway(supabaseClient),
+    drinkLog: drinkLogController,
+    family: familyController,
+  );
   final router = createAppRouter(onboardingComplete: onboardingComplete);
   await LocalRiskReminderScheduler.instance.initialize(
     onOpenRisk: () => router.go('/risk'),
@@ -43,6 +51,7 @@ Future<void> main() async {
       drinkLogController: drinkLogController,
       drinkCatalogController: drinkCatalogController,
       familyController: familyController,
+      cloudSyncController: cloudSyncController,
     ),
   );
 }
