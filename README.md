@@ -88,6 +88,7 @@ Implementasi UI baru harus mengambil warna, tipografi, spacing, radius, shadow, 
 
 Dokumen handoff dari desain tersedia di `docs/design/`:
 
+- `PRODUCT_DECISIONS.md`: keputusan produk terbaru yang menggantikan pertanyaan terbuka pada handoff lama.
 - `DESIGN.md`: spesifikasi visual dan komponen.
 - `MOTION.md`: timing, curve, dan perilaku reduced motion.
 - `SCREENS.md`: anatomi setiap screen.
@@ -110,7 +111,10 @@ Font Onest disimpan lokal agar konsisten pada Android dan web. Lisensi SIL Open 
 
 ### Roadmap
 
-- Notifikasi pengingat pemeriksaan tujuh hari setelah skrining.
+- Penyesuaian alur Cek Risiko untuk diri sendiri dan orang tua.
+- Kalkulator BMI lokal dari tinggi dan berat badan.
+- Notifikasi lokal pengingat pemeriksaan tujuh hari setelah skrining.
+- Tab Keluarga lokal untuk melacak progres pendampingan tanpa menyimpan data kesehatan.
 - Dataset recognition, evaluasi akurasi, dan rate limiting production.
 - Animasi penghematan gula dan confetti kontekstual.
 - Dukungan kategori makanan.
