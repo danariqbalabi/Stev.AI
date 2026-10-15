@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/stev_tokens.dart';
 import '../../../shared/widgets/stev_design_system.dart';
+import '../domain/bmi_calculator.dart';
 import '../domain/risk_assessment.dart';
 
 class RiskAssessmentScreen extends StatefulWidget {
@@ -19,6 +20,15 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
     RiskAssessment.questions.length,
     null,
   );
+  final _heightController = TextEditingController();
+  final _weightController = TextEditingController();
+
+  @override
+  void dispose() {
+    _heightController.dispose();
+    _weightController.dispose();
+    super.dispose();
+  }
 
   void _goBack() {
     if (_subject == null) {
@@ -51,8 +61,27 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
     context.pushReplacement('/risk/result', extra: result);
   }
 
+  BmiCalculation? get _bmiCalculation => BmiCalculator.calculate(
+    heightCentimeters: _heightController.text,
+    weightKilograms: _weightController.text,
+  );
+
+  void _answerBmi() {
+    final calculation = _bmiCalculation;
+    if (calculation == null) return;
+    final options = RiskAssessment.questions[1].options;
+    final option = switch (calculation.category) {
+      BmiCategory.below25 => options[0],
+      BmiCategory.from25To30 => options[1],
+      BmiCategory.above30 => options[2],
+    };
+    _answer(option);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+
     return Scaffold(
       key: const ValueKey('riskAssessmentScreen'),
       body: AuraBackground(
@@ -86,9 +115,23 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
               ),
               Expanded(
                 child: AnimatedSwitcher(
-                  duration: StevMotion.screenFade,
+                  duration: reduceMotion
+                      ? StevMotion.reduced
+                      : StevMotion.screenFade,
                   child: _subject == null
                       ? _SubjectStep(onSelected: _selectSubject)
+                      : _questionIndex == 1
+                      ? _BmiQuestionStep(
+                          key: const ValueKey('bmiQuestionStep'),
+                          subject: _subject!,
+                          heightController: _heightController,
+                          weightController: _weightController,
+                          calculation: _bmiCalculation,
+                          onChanged: () => setState(() {}),
+                          onContinue: _answerBmi,
+                          onUnknown: () =>
+                              _answer(RiskAssessment.questions[1].options.last),
+                        )
                       : _QuestionStep(
                           key: ValueKey(_questionIndex),
                           subject: _subject!,
@@ -102,6 +145,161 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _BmiQuestionStep extends StatelessWidget {
+  const _BmiQuestionStep({
+    super.key,
+    required this.subject,
+    required this.heightController,
+    required this.weightController,
+    required this.calculation,
+    required this.onChanged,
+    required this.onContinue,
+    required this.onUnknown,
+  });
+
+  final RiskSubject subject;
+  final TextEditingController heightController;
+  final TextEditingController weightController;
+  final BmiCalculation? calculation;
+  final VoidCallback onChanged;
+  final VoidCallback onContinue;
+  final VoidCallback onUnknown;
+
+  String get _categoryLabel => switch (calculation?.category) {
+    BmiCategory.below25 => '<25',
+    BmiCategory.from25To30 => '25–30',
+    BmiCategory.above30 => '>30',
+    null => '',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final question = RiskAssessment.questions[1];
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+        StevSpace.s5,
+        StevSpace.s6,
+        StevSpace.s5,
+        StevSpace.s6,
+      ),
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(StevRadius.pill),
+                child: const LinearProgressIndicator(
+                  minHeight: 8,
+                  value: 2 / 8,
+                  color: StevColors.leaf,
+                  backgroundColor: StevColors.card,
+                ),
+              ),
+            ),
+            const SizedBox(width: StevSpace.s3),
+            Text(
+              '2/${RiskAssessment.questions.length}',
+              style: StevType.caption.copyWith(color: StevColors.ink2),
+            ),
+          ],
+        ),
+        const SizedBox(height: StevSpace.s7),
+        Text(question.textFor(subject), style: StevType.title),
+        const SizedBox(height: StevSpace.s2),
+        Text(
+          'Masukkan tinggi dan berat untuk menghitung kategorinya di perangkat ini.',
+          style: StevType.body.copyWith(color: StevColors.ink2),
+        ),
+        const SizedBox(height: StevSpace.s5),
+        Row(
+          children: [
+            Expanded(
+              child: _MeasurementField(
+                key: const ValueKey('bmiHeightField'),
+                controller: heightController,
+                label: 'Tinggi',
+                suffix: 'cm',
+                onChanged: onChanged,
+              ),
+            ),
+            const SizedBox(width: StevSpace.s3),
+            Expanded(
+              child: _MeasurementField(
+                key: const ValueKey('bmiWeightField'),
+                controller: weightController,
+                label: 'Berat',
+                suffix: 'kg',
+                onChanged: onChanged,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: StevSpace.s5),
+        GlassCard(
+          child: calculation == null
+              ? Text(
+                  'Isi tinggi 80–250 cm dan berat 20–400 kg.',
+                  style: StevType.body.copyWith(color: StevColors.ink2),
+                )
+              : Column(
+                  children: [
+                    Text(
+                      'BMI ${calculation!.value.toStringAsFixed(1)}',
+                      style: StevType.heading,
+                    ),
+                    const SizedBox(height: StevSpace.s1),
+                    Text(
+                      'Kategori $_categoryLabel',
+                      key: const ValueKey('bmiCategory'),
+                      style: StevType.body.copyWith(color: StevColors.ink2),
+                    ),
+                  ],
+                ),
+        ),
+        const SizedBox(height: StevSpace.s5),
+        StevButton(
+          key: const ValueKey('bmiContinue'),
+          label: 'Lanjut',
+          variant: StevButtonVariant.leaf,
+          onPressed: calculation == null ? null : onContinue,
+        ),
+        const SizedBox(height: StevSpace.s3),
+        StevButton(
+          key: const ValueKey('bmiUnknown'),
+          label: 'Tidak tahu',
+          variant: StevButtonVariant.ghost,
+          onPressed: onUnknown,
+        ),
+      ],
+    );
+  }
+}
+
+class _MeasurementField extends StatelessWidget {
+  const _MeasurementField({
+    super.key,
+    required this.controller,
+    required this.label,
+    required this.suffix,
+    required this.onChanged,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final String suffix;
+  final VoidCallback onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      onChanged: (_) => onChanged(),
+      decoration: InputDecoration(labelText: label, suffixText: suffix),
     );
   }
 }
@@ -124,15 +322,9 @@ class _SubjectStep extends StatelessWidget {
         const Center(child: StevMascot(mood: StevMood.happy, size: 110)),
         const SizedBox(height: StevSpace.s6),
         Text(
-          'Mau cek untuk siapa?',
+          'Cek risiko untuk siapa?',
           textAlign: TextAlign.center,
           style: StevType.title,
-        ),
-        const SizedBox(height: StevSpace.s3),
-        Text(
-          'Jawab 8 pertanyaan singkat untuk melihat gambaran risikonya.',
-          textAlign: TextAlign.center,
-          style: StevType.body.copyWith(color: StevColors.ink2),
         ),
         const SizedBox(height: StevSpace.s7),
         _ChoiceCard(

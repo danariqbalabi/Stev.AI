@@ -3,13 +3,35 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:steviai/app/app.dart';
 import 'package:steviai/app/router.dart';
+import 'package:steviai/core/theme/stev_tokens.dart';
+import 'package:steviai/features/risk_assessment/domain/bmi_calculator.dart';
 import 'package:steviai/features/risk_assessment/domain/risk_assessment.dart';
+import 'package:steviai/features/risk_assessment/presentation/risk_assessment_screen.dart';
 import 'package:steviai/features/risk_assessment/presentation/risk_invite_screen.dart';
+import 'package:steviai/features/risk_assessment/presentation/risk_result_screen.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('RiskAssessment', () {
+    test('calculates BMI locally and maps its score categories', () {
+      final calculation = BmiCalculator.calculate(
+        heightCentimeters: '170',
+        weightKilograms: '60',
+      );
+
+      expect(calculation, isNotNull);
+      expect(calculation!.value, closeTo(20.76, 0.01));
+      expect(calculation.category, BmiCategory.below25);
+      expect(BmiCalculator.categoryFor(25), BmiCategory.from25To30);
+      expect(BmiCalculator.categoryFor(30), BmiCategory.from25To30);
+      expect(BmiCalculator.categoryFor(30.01), BmiCategory.above30);
+      expect(
+        BmiCalculator.calculate(heightCentimeters: '0', weightKilograms: '60'),
+        isNull,
+      );
+    });
+
     test('classifies the demo high-risk answers and ranks factors', () {
       final result = RiskAssessment.evaluate(
         subject: RiskSubject.parent,
@@ -89,6 +111,57 @@ void main() {
     });
   });
 
+  testWidgets('uses the final risk labels and minimum estimate treatment', (
+    tester,
+  ) async {
+    const result = RiskAssessmentResult(
+      subject: RiskSubject.parent,
+      level: RiskLevel.low,
+      isMinimumEstimate: true,
+      topFactors: [],
+      score: 0,
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(home: RiskResultScreen(result: result)),
+    );
+
+    expect(find.text('Rendah'), findsOneWidget);
+    expect(find.text('Estimasi minimal'), findsOneWidget);
+    expect(find.textContaining('karena ada jawaban'), findsNothing);
+    expect(
+      find.ancestor(
+        of: find.byKey(const ValueKey('minimumEstimateLabel')),
+        matching: find.byType(Row),
+      ),
+      findsWidgets,
+    );
+
+    final pill = tester.widget<Container>(
+      find.byKey(const ValueKey('riskLevelPill')),
+    );
+    final decoration = pill.decoration! as BoxDecoration;
+    expect(decoration.color, StevColors.ink);
+  });
+
+  testWidgets('uses the reduced transition duration when motion is disabled', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: MediaQuery(
+          data: MediaQueryData(disableAnimations: true),
+          child: RiskAssessmentScreen(),
+        ),
+      ),
+    );
+
+    final switcher = tester.widget<AnimatedSwitcher>(
+      find.byType(AnimatedSwitcher),
+    );
+    expect(switcher.duration, StevMotion.reduced);
+  });
+
   testWidgets('completes the low-risk flow without showing a raw score', (
     tester,
   ) async {
@@ -103,7 +176,7 @@ void main() {
     await tester.pumpWidget(StevAiApp(router: router));
     await tester.pumpAndSettle();
 
-    expect(find.text('Mau cek untuk siapa?'), findsOneWidget);
+    expect(find.text('Cek risiko untuk siapa?'), findsOneWidget);
     expect(
       find.textContaining('Jawaban diproses di perangkatmu'),
       findsOneWidget,
@@ -111,23 +184,25 @@ void main() {
     await tester.tap(find.text('Diri sendiri'));
     await tester.pumpAndSettle();
 
-    const answerLabels = [
-      '<45',
-      '<25',
-      'Rendah',
-      'Ya',
-      'Ya',
-      'Tidak',
-      'Tidak',
-      'Tidak ada',
-    ];
+    await tester.tap(find.byKey(const ValueKey('riskOption-<45')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('bmiQuestionStep')), findsOneWidget);
+    await tester.enterText(find.byKey(const ValueKey('bmiHeightField')), '170');
+    await tester.enterText(find.byKey(const ValueKey('bmiWeightField')), '60');
+    await tester.pump();
+    expect(find.text('Kategori <25'), findsOneWidget);
+    await tester.ensureVisible(find.byKey(const ValueKey('bmiContinue')));
+    await tester.tap(find.byKey(const ValueKey('bmiContinue')));
+    await tester.pumpAndSettle();
+
+    const answerLabels = ['Rendah', 'Ya', 'Ya', 'Tidak', 'Tidak', 'Tidak ada'];
     for (final label in answerLabels) {
       await tester.tap(find.byKey(ValueKey('riskOption-$label')));
       await tester.pumpAndSettle();
     }
 
     expect(find.byKey(const ValueKey('riskResultScreen')), findsOneWidget);
-    expect(find.text('Risiko rendah'), findsOneWidget);
+    expect(find.text('Rendah'), findsOneWidget);
     expect(find.text('Belum ada faktor utama'), findsOneWidget);
     expect(find.text('0'), findsNothing);
     expect(
@@ -139,10 +214,42 @@ void main() {
       const Offset(0, -500),
     );
     await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('openRiskInvite')), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('finishRiskAssessment')));
+    await tester.pump();
+    await tester.pump(StevMotion.screenFade);
+    expect(find.byKey(const ValueKey('dashboardScreen')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('offers referral only for a parent assessment', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const result = RiskAssessmentResult(
+      subject: RiskSubject.parent,
+      level: RiskLevel.medium,
+      isMinimumEstimate: false,
+      topFactors: ['Usia 55–64'],
+      score: 12,
+    );
+    final router = createAppRouter(onboardingComplete: true)
+      ..go('/risk/result', extra: result);
+    addTearDown(router.dispose);
+    await tester.pumpWidget(StevAiApp(router: router));
+    await tester.pumpAndSettle();
+
+    await tester.drag(
+      find.byKey(const ValueKey('riskResultScreen')),
+      const Offset(0, -500),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('openRiskInvite')), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('openRiskInvite')));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('riskInviteScreen')), findsOneWidget);
-    expect(tester.takeException(), isNull);
   });
 
   testWidgets('shares only the edited referral message', (tester) async {

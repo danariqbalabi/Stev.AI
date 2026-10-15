@@ -183,7 +183,7 @@ class _SwapRewardOverlayState extends State<SwapRewardOverlay>
                           offsetY: reduceMotion ? 0 : 18,
                           child: StevButton(
                             key: const ValueKey('chooseSwapButton'),
-                            label: 'Aku pilih ini',
+                            label: 'Lanjut',
                             variant: StevButtonVariant.leaf,
                             onPressed: _saving ? null : _chooseSwap,
                           ),

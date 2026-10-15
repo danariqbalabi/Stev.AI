@@ -11,9 +11,9 @@ class RiskResultScreen extends StatelessWidget {
   final RiskAssessmentResult result;
 
   String get _levelLabel => switch (result.level) {
-    RiskLevel.low => 'Risiko rendah',
-    RiskLevel.medium => 'Risiko sedang',
-    RiskLevel.high => 'Risiko tinggi',
+    RiskLevel.low => 'Rendah',
+    RiskLevel.medium => 'Sedang',
+    RiskLevel.high => 'Tinggi',
   };
 
   String get _actionTitle => switch (result.level) {
@@ -29,12 +29,6 @@ class RiskResultScreen extends StatelessWidget {
     final subject = result.subject == RiskSubject.parent ? 'Ibu/Bapak' : 'Kamu';
     return '$subject bisa ikut Cek Kesehatan Gratis dari Kemenkes. Gula darah termasuk yang diperiksa.';
   }
-
-  Color get _levelColor => switch (result.level) {
-    RiskLevel.low => StevColors.leaf,
-    RiskLevel.medium => StevColors.sun,
-    RiskLevel.high => StevColors.over,
-  };
 
   void _showLocations(BuildContext context) {
     showModalBottomSheet<void>(
@@ -106,34 +100,37 @@ class RiskResultScreen extends StatelessWidget {
               ),
               const SizedBox(height: StevSpace.s5),
               Center(
-                child: Container(
-                  key: const ValueKey('riskLevelPill'),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: StevSpace.s5,
-                    vertical: StevSpace.s3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _levelColor,
-                    borderRadius: BorderRadius.circular(StevRadius.pill),
-                  ),
-                  child: Text(
-                    _levelLabel,
-                    style: StevType.label.copyWith(
-                      color: result.level == RiskLevel.high
-                          ? StevColors.onInk
-                          : StevColors.ink,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      key: const ValueKey('riskLevelPill'),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: StevSpace.s5,
+                        vertical: StevSpace.s3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: StevColors.ink,
+                        borderRadius: BorderRadius.circular(StevRadius.pill),
+                      ),
+                      child: Text(
+                        _levelLabel,
+                        style: StevType.label.copyWith(color: StevColors.onInk),
+                      ),
                     ),
-                  ),
+                    if (result.isMinimumEstimate) ...[
+                      const SizedBox(width: StevSpace.s3),
+                      Text(
+                        'Estimasi minimal',
+                        key: const ValueKey('minimumEstimateLabel'),
+                        style: StevType.caption.copyWith(
+                          color: StevColors.ink2,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
-              if (result.isMinimumEstimate) ...[
-                const SizedBox(height: StevSpace.s3),
-                Text(
-                  'Estimasi minimal karena ada jawaban “Tidak tahu”.',
-                  textAlign: TextAlign.center,
-                  style: StevType.caption.copyWith(color: StevColors.ink2),
-                ),
-              ],
               const SizedBox(height: StevSpace.s7),
               GlassCard(
                 child: Column(
@@ -192,17 +189,21 @@ class RiskResultScreen extends StatelessWidget {
                 style: StevType.caption.copyWith(color: StevColors.ink2),
               ),
               const SizedBox(height: StevSpace.s5),
+              if (result.subject == RiskSubject.parent) ...[
+                StevButton(
+                  key: const ValueKey('openRiskInvite'),
+                  label: 'Ajak Ibu/Bapak periksa',
+                  variant: StevButtonVariant.leaf,
+                  onPressed: () =>
+                      context.push('/risk/invite', extra: result.subject),
+                ),
+                const SizedBox(height: StevSpace.s3),
+              ],
               StevButton(
-                key: const ValueKey('openRiskInvite'),
-                label: result.subject == RiskSubject.parent
-                    ? 'Ajak Ibu/Bapak periksa'
-                    : 'Periksa sekarang',
-                variant: StevButtonVariant.leaf,
-                onPressed: () =>
-                    context.push('/risk/invite', extra: result.subject),
+                key: const ValueKey('finishRiskAssessment'),
+                label: 'Selesai',
+                onPressed: () => context.go('/'),
               ),
-              const SizedBox(height: StevSpace.s3),
-              StevButton(label: 'Selesai', onPressed: () => context.go('/')),
             ],
           ),
         ),
