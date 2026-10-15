@@ -210,6 +210,48 @@ void main() {
     );
   });
 
+  testWidgets('resuming after midnight moves dashboard to the new day', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final storage = DrinkLogPreferences();
+    var clock = DateTime(2026, 10, 14, 23, 59);
+    await storage.write(clock, const [
+      DrinkSelection(drink: DrinkCatalog.tehMelatiKotak),
+    ], checkedIn: true);
+    final drinkLog = await DrinkLogController.persistent(
+      preferences: storage,
+      nowProvider: () => clock,
+    );
+    final router = createAppRouter(onboardingComplete: true);
+    addTearDown(router.dispose);
+    addTearDown(drinkLog.dispose);
+
+    await tester.pumpWidget(
+      StevAiApp(router: router, drinkLogController: drinkLog),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Teh melati kotak'), findsOneWidget);
+    expect(drinkLog.checkedInToday, isTrue);
+
+    clock = DateTime(2026, 10, 15, 0, 1);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(drinkLog.currentDate, clock);
+    expect(drinkLog.totalGrams, 0);
+    expect(drinkLog.checkedInToday, isFalse);
+    expect(find.text('Hari ini'), findsOneWidget);
+    expect(find.byKey(const ValueKey('emptyDrinkLog')), findsOneWidget);
+    expect(find.text('Teh melati kotak'), findsNothing);
+  });
+
   testWidgets('dashboard personalizes greeting from onboarding profile', (
     tester,
   ) async {

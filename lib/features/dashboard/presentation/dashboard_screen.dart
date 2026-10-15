@@ -29,6 +29,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   final _bodyKey = GlobalKey();
   final _firstRowKey = GlobalKey();
   DrinkLogController? _drinkLogController;
+  DateTime? _knownCurrentDate;
   DrinkSelection? _flightSelection;
   double _previousTotalGrams = 0;
   Offset _flightStart = Offset.zero;
@@ -66,6 +67,18 @@ class _DashboardScreenState extends State<DashboardScreen>
     if (!identical(controller, _drinkLogController)) {
       _drinkLogController = controller;
       _selectedDate = controller.currentDate;
+      _knownCurrentDate = controller.currentDate;
+    } else if (_knownCurrentDate != null &&
+        !_isSameDay(_knownCurrentDate!, controller.currentDate)) {
+      final followedToday =
+          _selectedDate == null ||
+          _isSameDay(_selectedDate!, _knownCurrentDate!);
+      _knownCurrentDate = controller.currentDate;
+      if (followedToday) {
+        _selectedDate = controller.currentDate;
+        _selectedDayLog = null;
+        _loadingDay = false;
+      }
     }
     unawaited(_refreshStreak());
     final event = controller.takePendingLoggedEvent();
@@ -124,7 +137,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   Future<void> _checkIn() async {
     final controller = _drinkLogController;
     if (controller == null) return;
-    controller.checkIn();
+    await controller.checkIn();
     await controller.flush();
     await _refreshStreak();
   }
@@ -179,7 +192,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       ),
     );
     if (shouldDelete == true && mounted) {
-      _drinkLogController?.remove(selection.identityId);
+      await _drinkLogController?.remove(selection.identityId);
     }
   }
 

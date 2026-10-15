@@ -74,12 +74,13 @@ class _SwapRewardOverlayState extends State<SwapRewardOverlay>
     super.dispose();
   }
 
-  void _chooseSwap() {
+  Future<void> _chooseSwap() async {
     if (_saving) return;
     _saving = true;
     final router = GoRouter.of(context);
-    DrinkLogScope.read(context)
+    await DrinkLogScope.read(context)
         .logSwap(widget.option.selection, savedGrams: widget.option.savedGrams);
+    if (!mounted) return;
     Navigator.of(context, rootNavigator: true).pop();
     router.go('/');
   }

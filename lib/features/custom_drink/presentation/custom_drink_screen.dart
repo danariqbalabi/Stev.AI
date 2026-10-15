@@ -28,14 +28,14 @@ class _CustomDrinkScreenState extends State<CustomDrinkScreen> {
     super.dispose();
   }
 
-  void _save() {
+  Future<void> _save() async {
     final drink = CustomDrink.create(
       name: _nameController.text,
       spoons: _spoons,
       syrupPumps: _syrupPumps,
     );
-    DrinkLogScope.read(context).log(DrinkSelection(drink: drink));
-    context.go('/');
+    await DrinkLogScope.read(context).log(DrinkSelection(drink: drink));
+    if (mounted) context.go('/');
   }
 
   void _updateSpoons(int change) {
