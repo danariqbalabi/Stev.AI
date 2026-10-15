@@ -302,6 +302,9 @@ class _ResultSheet extends StatelessWidget {
                 Text(
                   selection.drink.validationStatus == DrinkValidationStatus.demo
                       ? 'Data demo — belum divalidasi'
+                      : selection.drink.validationStatus ==
+                            DrinkValidationStatus.unverified
+                      ? 'Sumber eksternal — belum diverifikasi'
                       : _sourceLabel(selection.drink),
                   key: const ValueKey('drinkDataStatus'),
                   style: StevType.caption.copyWith(color: StevColors.ink2),

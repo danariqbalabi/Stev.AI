@@ -6,7 +6,7 @@ enum DrinkKind { tea, coffee, boba, juice, milk, soda, isotonic, custom }
 
 enum DrinkDataType { label, official, estimated, community, custom }
 
-enum DrinkValidationStatus { demo, verified }
+enum DrinkValidationStatus { demo, verified, unverified }
 
 enum SugarLevel {
   normal('Normal', 3),

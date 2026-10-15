@@ -42,7 +42,7 @@ Untuk minuman kemasan, angka gula direncanakan berasal dari informasi label atau
 ## Alur demo utama
 
 1. Pengguna membuka Dashboard dan menekan **Scan minuman**.
-2. Pengguna memilih **Foto Minuman** pada halaman mode scan, lalu mengambil foto minuman atau menu. Pilihan **Barcode** dan **Label Gizi** ditampilkan sebagai **Segera hadir** sampai integrasinya selesai.
+2. Pengguna memilih **Foto Minuman** untuk mengambil foto minuman atau menu, atau **Barcode** untuk mencari produk kemasan. **Label Gizi** masih berstatus **Segera hadir**.
 3. Aplikasi memberikan tiga kandidat minuman.
 4. Pengguna memilih kandidat dan level gula jika minuman tidak memiliki label kemasan.
 5. Aplikasi menampilkan estimasi gula, visual sendok, dan sisa referensi harian.
@@ -61,7 +61,9 @@ Saat ini repository berisi alur MVP awal yang dapat diklik:
 - State log minuman harian yang menghitung total secara dinamis dan mengganti entri produk yang sama.
 - Aturan Swap terpusat untuk level gula minuman non-kemasan dan alternatif produk kemasan yang tersedia.
 - Kamera Android/Web dengan preview hasil foto.
-- Halaman pemilihan mode scan sebelum membuka kamera, dengan Foto Minuman aktif dan Barcode/Label Gizi berstatus Segera hadir. Pencarian manual tetap tersedia.
+- Halaman pemilihan mode scan sebelum membuka kamera, dengan Foto Minuman dan Barcode aktif; Label Gizi berstatus Segera hadir. Pencarian manual tetap tersedia.
+- Scanner barcode EAN-8/EAN-13/UPC-A Android/Web, input angka manual, pemeriksaan checksum, serta pencarian Supabase lalu Open Food Facts.
+- Konfirmasi barcode menampilkan sumber, gula per porsi, porsi yang dapat diubah, dan total gula sebelum dicatat ke log pribadi. Produk dengan data gula/volume yang tidak lengkap diarahkan ke pencarian atau input manual.
 - Fallback pemilihan gambar dari galeri/file.
 - State izin ditolak, kamera tidak tersedia, dan coba lagi.
 - Konfirmasi minuman sesuai design handoff dengan foto hasil scan, tiga kandidat katalog, dan penanda kandidat paling cocok.
@@ -89,6 +91,16 @@ Saat ini repository berisi alur MVP awal yang dapat diklik:
 - Navigasi Android dan web.
 
 Edge Function recognition dan katalog cloud sudah tersedia di source code, tetapi function harus di-deploy dan diberi API key AI sebelum recognition nyata aktif. Tanpa konfigurasi endpoint, hasil recognition tetap memakai adapter demo lokal. Aturan Swap saat ini masih merupakan data demo lokal dari design handoff.
+
+## Data barcode
+
+Pencarian barcode hanya melakukan request baca: pertama ke `drinks.barcode` di Supabase (baris `verified = true`), lalu ke API Open Food Facts jika belum tersedia. Isi kolom barcode dengan EAN/UPC yang benar beserta `serving_ml` dan gula per porsi katalog. Tidak perlu migration atau Edge Function baru untuk fitur ini.
+
+Data Open Food Facts belum diverifikasi Stev.AI. Pengguna perlu mengecek varian dan ukuran pada label sebelum menekan **Konfirmasi & catat**. Gula per 100 ml dikalikan jumlah porsi yang diminum; ukuran kemasan dalam gram tidak dikonversi ke ml. Produk bubuk/sirup dan data tidak lengkap memerlukan input manual. Hasil tidak ditambahkan ke katalog publik.
+
+Sumber eksternal: [Open Food Facts](https://world.openfoodfacts.org), database berlisensi [Open Database License (ODbL)](https://opendatacommons.org/licenses/odbl/1-0/). API eksternal memerlukan internet; pada Web, kamera memerlukan HTTPS atau localhost dan izin browser. Gambar produk mengikuti sumbernya dan memiliki fallback jika gagal dimuat.
+
+Uji pada perangkat fisik: scan produk, ubah porsi, catat, scan lagi, tolak izin kamera lalu ketik barcode, dan coba barcode yang belum tersedia. Browser dapat mengunduh library deteksi barcode saat pertama dibuka. Fitur Label Gizi/OCR menyusul.
 
 ## Design system
 
