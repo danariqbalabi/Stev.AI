@@ -57,6 +57,7 @@ app.*.map.json
 /config/env.local.json
 /supabase/functions/.env
 /supabase/.temp/
+/.vercel/
 
 # Local recognition evaluation photos and generated reports
 /tool/recognition_dataset/images/
