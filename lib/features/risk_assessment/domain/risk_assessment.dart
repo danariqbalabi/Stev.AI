@@ -21,8 +21,14 @@ class RiskQuestion {
   final String parentText;
   final List<RiskOption> options;
 
-  String textFor(RiskSubject subject) =>
-      subject == RiskSubject.self ? selfText : parentText;
+  String textFor(RiskSubject subject, {String? familyMemberName}) {
+    if (subject == RiskSubject.self) return selfText;
+    final label = familyMemberName?.trim();
+    return parentText.replaceAll(
+      'Ayah/Ibu',
+      label == null || label.isEmpty ? 'Ayah/Ibu' : label,
+    );
+  }
 }
 
 class RiskAssessmentResult {
@@ -32,12 +38,14 @@ class RiskAssessmentResult {
     required this.topFactors,
     required this.score,
     this.familyMemberId,
+    this.subjectName,
   });
 
   final RiskSubject subject;
   final RiskLevel level;
   final List<String> topFactors;
   final String? familyMemberId;
+  final String? subjectName;
 
   /// Persisted only as part of the local result summary, never with raw answers.
   final int score;
@@ -153,6 +161,7 @@ abstract final class RiskAssessment {
     required RiskSubject subject,
     required List<RiskOption> answers,
     String? familyMemberId,
+    String? subjectName,
   }) {
     if (answers.length != questions.length) {
       throw ArgumentError.value(
@@ -178,6 +187,7 @@ abstract final class RiskAssessment {
           .toList(growable: false),
       score: score,
       familyMemberId: familyMemberId,
+      subjectName: subjectName,
     );
   }
 }

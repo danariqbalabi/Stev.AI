@@ -54,21 +54,23 @@ void main() {
     await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const ValueKey('familyNameField')),
-      'Ibu',
+      'Rani',
     );
     await tester.enterText(
       find.byKey(const ValueKey('familyRelationshipField')),
-      'Orang tua',
+      'Pacar',
     );
     await tester.tap(find.byKey(const ValueKey('saveFamilyMember')));
     await tester.pumpAndSettle();
 
-    expect(family.members.single.nickname, 'Ibu');
+    expect(family.members.single.nickname, 'Rani');
+    expect(family.members.single.relationship, 'Pacar');
     expect(find.text('Belum dicek'), findsOneWidget);
     final memberId = family.members.single.id;
     await tester.tap(find.byKey(ValueKey('assessFamilyMember-$memberId')));
     await tester.pumpAndSettle();
-    expect(find.text('Usia Ayah/Ibu berapa?'), findsOneWidget);
+    expect(find.text('Usia Rani berapa?'), findsOneWidget);
+    expect(find.textContaining('Ayah/Ibu'), findsNothing);
 
     await tester.tap(find.byKey(const ValueKey('riskOption-<45')));
     await tester.pumpAndSettle();

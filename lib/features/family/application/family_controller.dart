@@ -31,6 +31,13 @@ class FamilyController extends ChangeNotifier {
 
   List<FamilyMember> get members => List.unmodifiable(_members);
 
+  FamilyMember? memberById(String id) {
+    for (final member in _members) {
+      if (member.id == id) return member;
+    }
+    return null;
+  }
+
   Future<void> add({
     required String nickname,
     required String relationship,
