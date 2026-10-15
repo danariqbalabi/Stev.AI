@@ -18,6 +18,12 @@ void main() {
 
     await tester.pumpWidget(StevAiApp(router: router));
     await tester.pumpAndSettle();
+    final searchField = tester.widget<TextField>(
+      find.byKey(const ValueKey('manualSearchField')),
+    );
+    expect(searchField.textAlignVertical, TextAlignVertical.center);
+    expect(searchField.decoration?.isDense, isTrue);
+    expect(searchField.decoration?.contentPadding, EdgeInsets.zero);
     await tester.enterText(
       find.byKey(const ValueKey('manualSearchField')),
       'KOPI',

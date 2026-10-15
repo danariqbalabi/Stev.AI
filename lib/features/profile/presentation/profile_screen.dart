@@ -195,7 +195,7 @@ class _RiskHistoryCard extends StatelessWidget {
                       ),
                       const SizedBox(height: StevSpace.s1),
                       Text(
-                        '${entry.subject == RiskSubject.self ? 'Diri sendiri' : 'Ayah/Ibu'} • $_dateLabel',
+                        '${entry.subject == RiskSubject.self ? 'Diri sendiri' : entry.subjectName ?? 'Anggota keluarga'} • $_dateLabel',
                         style: StevType.caption.copyWith(
                           color: StevColors.ink2,
                         ),

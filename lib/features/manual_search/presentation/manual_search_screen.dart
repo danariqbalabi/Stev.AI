@@ -176,9 +176,12 @@ class _SearchField extends StatelessWidget {
           controller: controller,
           onChanged: onChanged,
           textInputAction: TextInputAction.search,
+          textAlignVertical: TextAlignVertical.center,
           style: StevType.label,
           decoration: InputDecoration(
             hintText: 'Cari minuman',
+            isDense: true,
+            contentPadding: EdgeInsets.zero,
             prefixIcon: const Padding(
               padding: EdgeInsets.all(StevSpace.s4),
               child: StevIcon(

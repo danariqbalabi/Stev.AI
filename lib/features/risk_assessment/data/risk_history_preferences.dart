@@ -13,6 +13,7 @@ class RiskHistoryEntry {
     required this.score,
     required this.topFactors,
     this.familyMemberId,
+    this.subjectName,
   });
 
   final String id;
@@ -22,6 +23,7 @@ class RiskHistoryEntry {
   final int score;
   final List<String> topFactors;
   final String? familyMemberId;
+  final String? subjectName;
 
   RiskAssessmentResult toResult() => RiskAssessmentResult(
     subject: subject,
@@ -29,6 +31,7 @@ class RiskHistoryEntry {
     topFactors: topFactors,
     score: score,
     familyMemberId: familyMemberId,
+    subjectName: subjectName,
   );
 }
 
@@ -65,6 +68,7 @@ class RiskHistoryPreferences {
         score: result.score,
         topFactors: List.unmodifiable(result.topFactors),
         familyMemberId: result.familyMemberId,
+        subjectName: result.subjectName,
       ),
       ...entries,
     ].take(_maxEntries).toList(growable: false);
@@ -83,6 +87,7 @@ class RiskHistoryPreferences {
     'score': entry.score,
     'topFactors': entry.topFactors,
     if (entry.familyMemberId != null) 'familyMemberId': entry.familyMemberId,
+    if (entry.subjectName != null) 'subjectName': entry.subjectName,
   };
 
   static RiskHistoryEntry? _fromJson(Map<String, Object?> json) {
@@ -109,6 +114,9 @@ class RiskHistoryPreferences {
       topFactors: factors.whereType<String>().toList(growable: false),
       familyMemberId: json['familyMemberId'] is String
           ? json['familyMemberId']! as String
+          : null,
+      subjectName: json['subjectName'] is String
+          ? json['subjectName']! as String
           : null,
     );
   }

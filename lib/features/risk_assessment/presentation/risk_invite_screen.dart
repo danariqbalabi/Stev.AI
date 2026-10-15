@@ -42,9 +42,14 @@ class RiskInviteScreen extends StatefulWidget {
     RiskLevel.veryHigh => 'Sangat tinggi',
   };
 
+  String get subjectName {
+    final name = result.subjectName?.trim();
+    return name == null || name.isEmpty ? 'Ayah/Ibu' : name;
+  }
+
   String get defaultMessage => result.subject == RiskSubject.self
       ? 'Ayah/Ibu, aku baru cek risiko diabetes di Stev.AI, hasilku $levelLabel (skor ${result.score}). Diabetes bisa menurun di keluarga, yuk cek gula darah bareng minggu ini.'
-      : 'Ayah/Ibu, aku isiin cek risiko diabetes buat Ayah/Ibu di Stev.AI, hasilnya $levelLabel (skor ${result.score}). Ini masih perkiraan, yuk pastikan dengan tes gula darah. Aku temenin.';
+      : '$subjectName, aku isiin cek risiko diabetes buat $subjectName di Stev.AI, hasilnya $levelLabel (skor ${result.score}). Ini masih perkiraan, yuk pastikan dengan tes gula darah. Aku temenin.';
 
   String get posterAsset {
     final subject = result.subject == RiskSubject.self ? 'diri' : 'ortu';

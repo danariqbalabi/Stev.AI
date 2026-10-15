@@ -10,6 +10,11 @@ class RiskResultScreen extends StatelessWidget {
 
   final RiskAssessmentResult result;
 
+  String get _subjectName {
+    final name = result.subjectName?.trim();
+    return name == null || name.isEmpty ? 'Ayah/Ibu' : name;
+  }
+
   String get _levelLabel => switch (result.level) {
     RiskLevel.low => 'Rendah',
     RiskLevel.slightlyElevated => 'Sedikit meningkat',
@@ -197,7 +202,7 @@ class RiskResultScreen extends StatelessWidget {
               if (result.shouldOfferParentInvite) ...[
                 StevButton(
                   key: const ValueKey('openRiskInvite'),
-                  label: 'Ajak Ayah/Ibu cek',
+                  label: 'Ajak $_subjectName cek',
                   variant: StevButtonVariant.leaf,
                   onPressed: () => context.push('/risk/invite', extra: result),
                 ),

@@ -52,7 +52,11 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
     if (_subject == null) {
       context.pop();
     } else if (_questionIndex == 0) {
-      setState(() => _subject = null);
+      if (widget.familyMemberId != null) {
+        context.pop();
+      } else {
+        setState(() => _subject = null);
+      }
     } else {
       setState(() => _questionIndex--);
     }
@@ -73,14 +77,18 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
       return;
     }
 
+    final familyController = widget.familyMemberId == null
+        ? null
+        : FamilyScope.read(context);
+    final familyMember = widget.familyMemberId == null
+        ? null
+        : familyController?.memberById(widget.familyMemberId!);
     final result = RiskAssessment.evaluate(
       subject: _subject!,
       answers: _answers.whereType<RiskOption>().toList(),
       familyMemberId: widget.familyMemberId,
+      subjectName: familyMember?.nickname,
     );
-    final familyController = widget.familyMemberId == null
-        ? null
-        : FamilyScope.read(context);
     setState(() => _savingResult = true);
     await RiskHistoryPreferences().add(result);
     if (widget.familyMemberId case final memberId?) {
@@ -129,6 +137,11 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
   @override
   Widget build(BuildContext context) {
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final familyMemberName = widget.familyMemberId == null
+        ? null
+        : FamilyScope.watch(context)
+              .memberById(widget.familyMemberId!)
+              ?.nickname;
 
     return Scaffold(
       key: const ValueKey('riskAssessmentScreen'),
@@ -172,6 +185,7 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
                       ? _BmiQuestionStep(
                           key: const ValueKey('bmiQuestionStep'),
                           subject: _subject!,
+                          familyMemberName: familyMemberName,
                           heightController: _heightController,
                           weightController: _weightController,
                           calculation: _bmiCalculation,
@@ -186,6 +200,7 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
                       ? _WaistQuestionStep(
                           key: const ValueKey('waistQuestionStep'),
                           subject: _subject!,
+                          familyMemberName: familyMemberName,
                           controller: _waistController,
                           selectedSex: _waistSex,
                           calculation: _waistCalculation,
@@ -201,6 +216,7 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
                       : _QuestionStep(
                           key: ValueKey(_questionIndex),
                           subject: _subject!,
+                          familyMemberName: familyMemberName,
                           index: _questionIndex,
                           selected: _answers[_questionIndex],
                           onSelected: _answer,
@@ -219,6 +235,7 @@ class _BmiQuestionStep extends StatelessWidget {
   const _BmiQuestionStep({
     super.key,
     required this.subject,
+    this.familyMemberName,
     required this.heightController,
     required this.weightController,
     required this.calculation,
@@ -230,6 +247,7 @@ class _BmiQuestionStep extends StatelessWidget {
   });
 
   final RiskSubject subject;
+  final String? familyMemberName;
   final TextEditingController heightController;
   final TextEditingController weightController;
   final BmiCalculation? calculation;
@@ -278,7 +296,10 @@ class _BmiQuestionStep extends StatelessWidget {
           ],
         ),
         const SizedBox(height: StevSpace.s7),
-        Text(question.textFor(subject), style: StevType.title),
+        Text(
+          question.textFor(subject, familyMemberName: familyMemberName),
+          style: StevType.title,
+        ),
         const SizedBox(height: StevSpace.s2),
         Text(
           'Pilih kategori BMI. Kalau belum tahu, hitung dari tinggi dan berat.',
@@ -314,7 +335,7 @@ class _BmiQuestionStep extends StatelessWidget {
                   key: const ValueKey('bmiHeightField'),
                   controller: heightController,
                   label: subject == RiskSubject.parent
-                      ? 'Tinggi badan Ayah/Ibu'
+                      ? 'Tinggi badan ${familyMemberName ?? 'Ayah/Ibu'}'
                       : 'Tinggi badan',
                   suffix: 'cm',
                   onChanged: onChanged,
@@ -326,7 +347,7 @@ class _BmiQuestionStep extends StatelessWidget {
                   key: const ValueKey('bmiWeightField'),
                   controller: weightController,
                   label: subject == RiskSubject.parent
-                      ? 'Berat badan Ayah/Ibu'
+                      ? 'Berat badan ${familyMemberName ?? 'Ayah/Ibu'}'
                       : 'Berat badan',
                   suffix: 'kg',
                   onChanged: onChanged,
@@ -367,7 +388,7 @@ class _BmiQuestionStep extends StatelessWidget {
         if (subject == RiskSubject.parent) ...[
           const SizedBox(height: StevSpace.s3),
           Text(
-            'Belum tahu? Tanyakan terlebih dahulu kepada Ayah/Ibu.',
+            'Belum tahu? Tanyakan terlebih dahulu kepada ${familyMemberName ?? 'Ayah/Ibu'}.',
             textAlign: TextAlign.center,
             style: StevType.caption.copyWith(color: StevColors.ink2),
           ),
@@ -381,6 +402,7 @@ class _WaistQuestionStep extends StatelessWidget {
   const _WaistQuestionStep({
     super.key,
     required this.subject,
+    this.familyMemberName,
     required this.controller,
     required this.selectedSex,
     required this.calculation,
@@ -393,6 +415,7 @@ class _WaistQuestionStep extends StatelessWidget {
   });
 
   final RiskSubject subject;
+  final String? familyMemberName;
   final TextEditingController controller;
   final WaistSex? selectedSex;
   final WaistCalculation? calculation;
@@ -442,7 +465,10 @@ class _WaistQuestionStep extends StatelessWidget {
         ),
         const SizedBox(height: StevSpace.s7),
         Text(
-          RiskAssessment.questions[2].textFor(subject),
+          RiskAssessment.questions[2].textFor(
+            subject,
+            familyMemberName: familyMemberName,
+          ),
           style: StevType.title,
         ),
         const SizedBox(height: StevSpace.s2),
@@ -490,7 +516,7 @@ class _WaistQuestionStep extends StatelessWidget {
             key: const ValueKey('waistField'),
             controller: controller,
             label: subject == RiskSubject.parent
-                ? 'Lingkar pinggang Ayah/Ibu'
+                ? 'Lingkar pinggang ${familyMemberName ?? 'Ayah/Ibu'}'
                 : 'Lingkar pinggang',
             suffix: 'cm',
             onChanged: onChanged,
@@ -517,7 +543,7 @@ class _WaistQuestionStep extends StatelessWidget {
         if (subject == RiskSubject.parent) ...[
           const SizedBox(height: StevSpace.s3),
           Text(
-            'Belum tahu? Tanyakan terlebih dahulu kepada Ayah/Ibu.',
+            'Belum tahu? Tanyakan terlebih dahulu kepada ${familyMemberName ?? 'Ayah/Ibu'}.',
             textAlign: TextAlign.center,
             style: StevType.caption.copyWith(color: StevColors.ink2),
           ),
@@ -599,12 +625,14 @@ class _QuestionStep extends StatelessWidget {
   const _QuestionStep({
     super.key,
     required this.subject,
+    this.familyMemberName,
     required this.index,
     required this.selected,
     required this.onSelected,
   });
 
   final RiskSubject subject;
+  final String? familyMemberName;
   final int index;
   final RiskOption? selected;
   final ValueChanged<RiskOption> onSelected;
@@ -642,7 +670,10 @@ class _QuestionStep extends StatelessWidget {
           ],
         ),
         const SizedBox(height: StevSpace.s10),
-        Text(question.textFor(subject), style: StevType.title),
+        Text(
+          question.textFor(subject, familyMemberName: familyMemberName),
+          style: StevType.title,
+        ),
         const SizedBox(height: StevSpace.s7),
         for (final option in question.options) ...[
           _ChoiceCard(
@@ -655,7 +686,7 @@ class _QuestionStep extends StatelessWidget {
         if (subject == RiskSubject.parent) ...[
           const SizedBox(height: StevSpace.s2),
           Text(
-            'Belum tahu? Tanyakan terlebih dahulu kepada Ayah/Ibu.',
+            'Belum tahu? Tanyakan terlebih dahulu kepada ${familyMemberName ?? 'Ayah/Ibu'}.',
             textAlign: TextAlign.center,
             style: StevType.caption.copyWith(color: StevColors.ink2),
           ),
