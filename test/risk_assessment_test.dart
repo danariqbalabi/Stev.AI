@@ -193,10 +193,42 @@ void main() {
       const Offset(0, -500),
     );
     await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('openRiskInvite')), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('finishRiskAssessment')));
+    await tester.pump();
+    await tester.pump(StevMotion.screenFade);
+    expect(find.byKey(const ValueKey('dashboardScreen')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('offers referral only for a parent assessment', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const result = RiskAssessmentResult(
+      subject: RiskSubject.parent,
+      level: RiskLevel.medium,
+      isMinimumEstimate: false,
+      topFactors: ['Usia 55–64'],
+      score: 12,
+    );
+    final router = createAppRouter(onboardingComplete: true)
+      ..go('/risk/result', extra: result);
+    addTearDown(router.dispose);
+    await tester.pumpWidget(StevAiApp(router: router));
+    await tester.pumpAndSettle();
+
+    await tester.drag(
+      find.byKey(const ValueKey('riskResultScreen')),
+      const Offset(0, -500),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('openRiskInvite')), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('openRiskInvite')));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('riskInviteScreen')), findsOneWidget);
-    expect(tester.takeException(), isNull);
   });
 
   testWidgets('shares only the edited referral message', (tester) async {
