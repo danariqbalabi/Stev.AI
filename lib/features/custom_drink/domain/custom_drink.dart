@@ -24,6 +24,7 @@ abstract final class CustomDrink {
       estimated: true,
       category: DrinkCategory.custom,
       kind: DrinkKind.custom,
+      dataType: DrinkDataType.custom,
       photoAsset: 'assets/drinks/es_teh_manis.png',
     );
   }

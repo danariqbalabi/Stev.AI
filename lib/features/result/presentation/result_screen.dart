@@ -275,6 +275,14 @@ class _ResultSheet extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(selection.drink.name, style: StevType.headingResult),
+                const SizedBox(height: StevSpace.s1),
+                Text(
+                  selection.drink.validationStatus == DrinkValidationStatus.demo
+                      ? 'Data demo — belum divalidasi'
+                      : _sourceLabel(selection.drink),
+                  key: const ValueKey('drinkDataStatus'),
+                  style: StevType.caption.copyWith(color: StevColors.ink2),
+                ),
                 if (selection.drink.levels != null) ...[
                   const SizedBox(height: StevSpace.s3),
                   _LevelPicker(
@@ -320,6 +328,14 @@ class _ResultSheet extends StatelessWidget {
     );
   }
 }
+
+String _sourceLabel(Drink drink) => switch (drink.dataType) {
+  DrinkDataType.label => 'Diverifikasi dari label produk',
+  DrinkDataType.official => 'Diverifikasi dari sumber resmi',
+  DrinkDataType.estimated => 'Estimasi terverifikasi',
+  DrinkDataType.community => 'Data komunitas terverifikasi',
+  DrinkDataType.custom => 'Estimasi racikan pengguna',
+};
 
 class _LevelPicker extends StatelessWidget {
   const _LevelPicker({required this.selected, required this.onChanged});

@@ -94,6 +94,8 @@ Dokumen handoff dari desain tersedia di `docs/design/`:
 - `SCREENS.md`: anatomi setiap screen.
 - `DATA.md`: data demo dan aturan produk.
 
+Alur validasi sumber gula tersedia di `docs/data/DRINK_VERIFICATION.md`.
+
 Font Onest disimpan lokal agar konsisten pada Android dan web. Lisensi SIL Open Font License tersedia di `assets/fonts/OFL.txt`.
 
 ## Ruang lingkup MVP

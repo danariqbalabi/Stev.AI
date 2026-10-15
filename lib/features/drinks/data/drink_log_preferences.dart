@@ -110,6 +110,9 @@ class DrinkLogPreferences {
         'photoAlignmentX': drink.photoAlignment.x,
         'photoAlignmentY': drink.photoAlignment.y,
         if (drink.logIdentityId != null) 'logIdentityId': drink.logIdentityId,
+        'dataType': drink.dataType.name,
+        'validationStatus': drink.validationStatus.name,
+        if (drink.sourceUrl != null) 'sourceUrl': drink.sourceUrl,
         if (drink.levels case final levels?)
           'levels': {
             'normal': levels.normal,
@@ -164,6 +167,12 @@ class DrinkLogPreferences {
     final alignmentY = drinkJson['photoAlignmentY'];
     final sugarLevel = _enumByName(SugarLevel.values, json['sugarLevel']);
     final logIdentityId = drinkJson['logIdentityId'];
+    final dataType = _enumByName(DrinkDataType.values, drinkJson['dataType']);
+    final validationStatus = _enumByName(
+      DrinkValidationStatus.values,
+      drinkJson['validationStatus'],
+    );
+    final sourceUrl = drinkJson['sourceUrl'];
     final drink = Drink(
       id: id,
       name: name,
@@ -175,6 +184,9 @@ class DrinkLogPreferences {
       photoUrl: photoUrl is String ? photoUrl : null,
       levels: levels,
       logIdentityId: logIdentityId is String ? logIdentityId : null,
+      dataType: dataType ?? DrinkDataType.estimated,
+      validationStatus: validationStatus ?? DrinkValidationStatus.demo,
+      sourceUrl: sourceUrl is String ? sourceUrl : null,
       photoFit: drinkJson['photoFit'] == 'contain'
           ? BoxFit.contain
           : BoxFit.cover,
