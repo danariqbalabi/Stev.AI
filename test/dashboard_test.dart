@@ -7,6 +7,8 @@ import 'package:steviai/features/drinks/application/drink_log_controller.dart';
 import 'package:steviai/features/drinks/data/drink_catalog.dart';
 import 'package:steviai/features/drinks/data/drink_log_preferences.dart';
 import 'package:steviai/features/drinks/domain/drink.dart';
+import 'package:steviai/features/family/application/family_controller.dart';
+import 'package:steviai/features/family/domain/family_member.dart';
 import 'package:steviai/features/onboarding/data/onboarding_preferences.dart';
 import 'package:steviai/features/risk_assessment/data/risk_history_preferences.dart';
 import 'package:steviai/features/risk_assessment/domain/risk_assessment.dart';
@@ -302,5 +304,101 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
     expect(find.byKey(const ValueKey('loggedDrinkFlight')), findsNothing);
     expect(drinkLog.takePendingLoggedEvent(), isNull);
+  });
+
+  testWidgets('profile can delete a saved risk assessment', (tester) async {
+    final storage = RiskHistoryPreferences();
+    await storage.add(
+      const RiskAssessmentResult(
+        subject: RiskSubject.self,
+        level: RiskLevel.medium,
+        topFactors: ['Riwayat keluarga inti'],
+        score: 12,
+      ),
+      checkedAt: DateTime(2026, 10, 15),
+    );
+    final entry = (await storage.read()).single;
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final router = createAppRouter(onboardingComplete: true)..go('/profile');
+    addTearDown(router.dispose);
+    await tester.pumpWidget(StevAiApp(router: router));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(ValueKey('deleteRiskHistory-${entry.id}')));
+    await tester.pumpAndSettle();
+    expect(find.text('Hapus hasil cek?'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('confirmDeleteRiskHistory')));
+    await tester.pumpAndSettle();
+
+    expect(await storage.read(), isEmpty);
+    expect(find.byKey(const ValueKey('emptyRiskHistory')), findsOneWidget);
+  });
+
+  testWidgets('reset keeps unrelated storage and starts onboarding', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({
+      OnboardingPreferences.completeKey: true,
+      OnboardingPreferences.nameKey: 'Danan',
+      'stev-extra-test-key': 'hapus',
+      'unrelated-setting': 'tetap',
+    });
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final drinkLog = DrinkLogController(
+      initialEntries: const [
+        DrinkSelection(drink: DrinkCatalog.tehMelatiKotak),
+      ],
+    );
+    final family = FamilyController(
+      initialMembers: [
+        FamilyMember(
+          id: 'partner',
+          nickname: 'Ayu',
+          relationship: 'Pacar',
+          status: FamilyProgressStatus.assessed,
+          updatedAt: DateTime(2026, 10, 15),
+        ),
+      ],
+    );
+    final router = createAppRouter(onboardingComplete: true)..go('/profile');
+    addTearDown(router.dispose);
+    addTearDown(drinkLog.dispose);
+    addTearDown(family.dispose);
+    await tester.pumpWidget(
+      StevAiApp(
+        router: router,
+        drinkLogController: drinkLog,
+        familyController: family,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final resetButton = find.byKey(const ValueKey('resetLocalDataButton'));
+    await tester.scrollUntilVisible(resetButton, 250);
+    await tester.drag(find.byType(ListView), const Offset(0, -160));
+    await tester.pumpAndSettle();
+    await tester.tap(resetButton);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('confirmResetLocalData')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 700));
+
+    final preferences = await SharedPreferences.getInstance();
+    expect(router.routeInformationProvider.value.uri.path, '/onboarding');
+    expect(drinkLog.entries, isEmpty);
+    expect(family.members, isEmpty);
+    expect(
+      preferences.getKeys().where((key) => key.startsWith('stev-')),
+      isEmpty,
+    );
+    expect(preferences.getString('unrelated-setting'), 'tetap');
   });
 }

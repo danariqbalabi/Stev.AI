@@ -79,6 +79,27 @@ class RiskHistoryPreferences {
     );
   }
 
+  Future<void> remove(String id) async {
+    final entries = await read();
+    final next = entries.where((entry) => entry.id != id).toList();
+    if (next.length == entries.length) return;
+
+    final preferences = await SharedPreferences.getInstance();
+    if (next.isEmpty) {
+      await preferences.remove(storageKey);
+      return;
+    }
+    await preferences.setString(
+      storageKey,
+      jsonEncode(next.map(_toJson).toList(growable: false)),
+    );
+  }
+
+  Future<void> clear() async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.remove(storageKey);
+  }
+
   static Map<String, Object?> _toJson(RiskHistoryEntry entry) => {
     'id': entry.id,
     'checkedAt': entry.checkedAt.toIso8601String(),

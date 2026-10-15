@@ -91,6 +91,13 @@ class FamilyController extends ChangeNotifier {
     await _commit();
   }
 
+  /// Clears the in-memory session during an app-wide data reset without
+  /// recreating the persisted family list.
+  void resetLocalState() {
+    _members.clear();
+    notifyListeners();
+  }
+
   Future<void> _commit() async {
     notifyListeners();
     await _preferences?.write(_members);

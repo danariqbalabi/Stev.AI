@@ -5,9 +5,12 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/stev_tokens.dart';
 import '../../../shared/widgets/stev_design_system.dart';
+import '../../drinks/application/drink_log_controller.dart';
+import '../../family/application/family_controller.dart';
 import '../../onboarding/data/onboarding_preferences.dart';
 import '../../risk_assessment/data/risk_history_preferences.dart';
 import '../../risk_assessment/domain/risk_assessment.dart';
+import '../data/local_data_preferences.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -40,6 +43,73 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _editProfile() async {
     await context.push('/profile/edit');
     await _loadProfile();
+  }
+
+  Future<bool> _confirm({
+    required String title,
+    required String message,
+    required String actionLabel,
+    required Key confirmKey,
+  }) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text(title),
+            content: Text(message),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Batal'),
+              ),
+              FilledButton(
+                key: confirmKey,
+                onPressed: () => Navigator.pop(context, true),
+                child: Text(actionLabel),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
+  Future<void> _deleteHistory(RiskHistoryEntry entry) async {
+    final confirmed = await _confirm(
+      title: 'Hapus hasil cek?',
+      message: 'Hasil cek risiko ini akan dihapus dari perangkat.',
+      actionLabel: 'Hapus',
+      confirmKey: const ValueKey('confirmDeleteRiskHistory'),
+    );
+    if (!confirmed) return;
+    await RiskHistoryPreferences().remove(entry.id);
+    if (mounted) await _loadProfile();
+  }
+
+  Future<void> _clearHistory() async {
+    final confirmed = await _confirm(
+      title: 'Hapus semua riwayat?',
+      message: 'Semua hasil cek risiko akan dihapus permanen dari perangkat.',
+      actionLabel: 'Hapus semua',
+      confirmKey: const ValueKey('confirmClearRiskHistory'),
+    );
+    if (!confirmed) return;
+    await RiskHistoryPreferences().clear();
+    if (mounted) await _loadProfile();
+  }
+
+  Future<void> _resetLocalData() async {
+    final confirmed = await _confirm(
+      title: 'Reset data aplikasi?',
+      message: 'Profil, catatan minuman, streak, keluarga, dan riwayat cek risiko akan dihapus permanen dari perangkat ini.',
+      actionLabel: 'Reset data',
+      confirmKey: const ValueKey('confirmResetLocalData'),
+    );
+    if (!confirmed || !mounted) return;
+
+    await DrinkLogScope.read(context).resetLocalState();
+    if (!mounted) return;
+    FamilyScope.read(context).resetLocalState();
+    await LocalDataPreferences.resetAll();
+    if (mounted) context.go('/onboarding');
   }
 
   @override
@@ -100,9 +170,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 )
               else
                 for (final entry in _riskHistory) ...[
-                  _RiskHistoryCard(entry: entry),
+                  _RiskHistoryCard(
+                    entry: entry,
+                    onDelete: () => _deleteHistory(entry),
+                  ),
                   const SizedBox(height: StevSpace.s3),
                 ],
+              if (_riskHistory.isNotEmpty) ...[
+                StevButton(
+                  key: const ValueKey('clearRiskHistoryButton'),
+                  label: 'Hapus semua riwayat',
+                  variant: StevButtonVariant.ghost,
+                  icon: const Icon(Icons.delete_sweep_outlined),
+                  onPressed: _clearHistory,
+                ),
+                const SizedBox(height: StevSpace.s2),
+              ],
               const SizedBox(height: StevSpace.s2),
               GlassCard(
                 padding: const EdgeInsets.all(StevSpace.s4),
@@ -117,6 +200,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           color: StevColors.ink2,
                         ),
                       ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: StevSpace.s4),
+              Text('Kontrol data', style: StevType.heading),
+              const SizedBox(height: StevSpace.s3),
+              GlassCard(
+                padding: const EdgeInsets.all(StevSpace.s4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Mulai dari awal', style: StevType.label),
+                    const SizedBox(height: StevSpace.s1),
+                    Text(
+                      'Hapus seluruh data Stev.AI yang tersimpan di perangkat ini.',
+                      style: StevType.caption.copyWith(color: StevColors.ink2),
+                    ),
+                    const SizedBox(height: StevSpace.s3),
+                    StevButton(
+                      key: const ValueKey('resetLocalDataButton'),
+                      label: 'Reset data aplikasi',
+                      variant: StevButtonVariant.card,
+                      icon: const Icon(Icons.restart_alt_rounded),
+                      onPressed: _resetLocalData,
                     ),
                   ],
                 ),
@@ -138,9 +246,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 }
 
 class _RiskHistoryCard extends StatelessWidget {
-  const _RiskHistoryCard({required this.entry});
+  const _RiskHistoryCard({required this.entry, required this.onDelete});
 
   final RiskHistoryEntry entry;
+  final VoidCallback onDelete;
 
   String get _levelLabel => switch (entry.level) {
     RiskLevel.low => 'Rendah',
@@ -203,7 +312,12 @@ class _RiskHistoryCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right_rounded),
+                IconButton(
+                  key: ValueKey('deleteRiskHistory-${entry.id}'),
+                  tooltip: 'Hapus hasil cek',
+                  onPressed: onDelete,
+                  icon: const Icon(Icons.delete_outline_rounded),
+                ),
               ],
             ),
           ),
