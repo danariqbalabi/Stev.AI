@@ -5,6 +5,7 @@ import 'package:steviai/app/app.dart';
 import 'package:steviai/app/router.dart';
 import 'package:steviai/features/drinks/application/drink_log_controller.dart';
 import 'package:steviai/features/drinks/data/drink_catalog.dart';
+import 'package:steviai/features/drinks/data/drink_log_preferences.dart';
 import 'package:steviai/features/drinks/domain/drink.dart';
 import 'package:steviai/features/onboarding/data/onboarding_preferences.dart';
 
@@ -54,6 +55,95 @@ void main() {
 
     expect(find.byKey(const ValueKey('weeklyScreen')), findsOneWidget);
     expect(find.text('Gula harian'), findsOneWidget);
+  });
+
+  testWidgets('profile tab opens the profile screen', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final router = createAppRouter(onboardingComplete: true);
+    addTearDown(router.dispose);
+    await tester.pumpWidget(StevAiApp(router: router));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.text('Profil'));
+    await tester.pump();
+    expect(router.routeInformationProvider.value.uri.path, '/profile');
+    await tester.pump(const Duration(milliseconds: 700));
+
+    expect(find.byKey(const ValueKey('profileScreen')), findsOneWidget);
+    expect(find.byKey(const ValueKey('editProfileButton')), findsOneWidget);
+  });
+
+  testWidgets('today drink can be deleted after confirmation', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final drinkLog = DrinkLogController(
+      initialEntries: const [
+        DrinkSelection(drink: DrinkCatalog.tehMelatiKotak),
+      ],
+    );
+    final router = createAppRouter(onboardingComplete: true);
+    addTearDown(router.dispose);
+    addTearDown(drinkLog.dispose);
+    await tester.pumpWidget(
+      StevAiApp(router: router, drinkLogController: drinkLog),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await tester.tap(
+      find.byKey(const ValueKey('deleteDrink-teh-melati-kotak')),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Hapus minuman?'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('confirmDeleteDrinkButton')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(drinkLog.entries, isEmpty);
+    expect(find.byKey(const ValueKey('emptyDrinkLog')), findsOneWidget);
+  });
+
+  testWidgets('past day shows stored drink history', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final storage = DrinkLogPreferences();
+    final today = DateTime(2026, 10, 14);
+    final yesterday = DateTime(2026, 10, 13);
+    await storage.write(yesterday, const [
+      DrinkSelection(drink: DrinkCatalog.tehMelatiKotak),
+    ]);
+    final drinkLog = await DrinkLogController.persistent(
+      preferences: storage,
+      now: today,
+    );
+    final router = createAppRouter(onboardingComplete: true);
+    addTearDown(router.dispose);
+    addTearDown(drinkLog.dispose);
+    await tester.pumpWidget(
+      StevAiApp(router: router, drinkLogController: drinkLog),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await tester.tap(find.byKey(const ValueKey('weekDay-2026-10-13')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('Kemarin'), findsOneWidget);
+    expect(find.text('Teh melati kotak'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('deleteDrink-teh-melati-kotak')),
+      findsNothing,
+    );
   });
 
   testWidgets('dashboard personalizes greeting from onboarding profile', (

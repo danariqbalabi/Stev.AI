@@ -5,35 +5,58 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/stev_tokens.dart';
 
 class WeekStrip extends StatelessWidget {
-  const WeekStrip({super.key});
+  const WeekStrip({
+    super.key,
+    required this.today,
+    required this.selectedDate,
+    required this.onSelected,
+  });
+
+  final DateTime today;
+  final DateTime selectedDate;
+  final ValueChanged<DateTime> onSelected;
 
   static const _days = ['S', 'S', 'R', 'K', 'J', 'S', 'M'];
-  static const _dates = [5, 6, 7, 8, 9, 10, 11];
-  static const _todayIndex = 3;
+
+  bool _isSameDay(DateTime first, DateTime second) =>
+      first.year == second.year &&
+      first.month == second.month &&
+      first.day == second.day;
 
   @override
   Widget build(BuildContext context) {
+    final normalizedToday = DateTime(today.year, today.month, today.day);
+    final monday = normalizedToday.subtract(
+      Duration(days: normalizedToday.weekday - DateTime.monday),
+    );
+    final dates = List.generate(
+      7,
+      (index) => monday.add(Duration(days: index)),
+    );
+
     return Semantics(
-      label: 'Minggu ini, hari ini Kamis tanggal 8',
-      child: ExcludeSemantics(
-        child: SizedBox(
-          height: 66,
-          child: Row(
-            children: [
-              for (var index = 0; index < _days.length; index++)
-                Expanded(
-                  child: _Day(
-                    letter: _days[index],
-                    date: _dates[index],
-                    state: index < _todayIndex
-                        ? _DayState.past
-                        : index == _todayIndex
-                        ? _DayState.today
-                        : _DayState.future,
-                  ),
+      label: 'Pilih riwayat minuman minggu ini',
+      child: SizedBox(
+        height: 66,
+        child: Row(
+          children: [
+            for (var index = 0; index < dates.length; index++)
+              Expanded(
+                child: _Day(
+                  letter: _days[index],
+                  date: dates[index],
+                  state: dates[index].isAfter(normalizedToday)
+                      ? _DayState.future
+                      : _isSameDay(dates[index], normalizedToday)
+                      ? _DayState.today
+                      : _DayState.past,
+                  selected: _isSameDay(dates[index], selectedDate),
+                  onPressed: dates[index].isAfter(normalizedToday)
+                      ? null
+                      : () => onSelected(dates[index]),
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       ),
     );
@@ -43,44 +66,70 @@ class WeekStrip extends StatelessWidget {
 enum _DayState { past, today, future }
 
 class _Day extends StatelessWidget {
-  const _Day({required this.letter, required this.date, required this.state});
+  const _Day({
+    required this.letter,
+    required this.date,
+    required this.state,
+    required this.selected,
+    required this.onPressed,
+  });
 
   final String letter;
-  final int date;
+  final DateTime date;
   final _DayState state;
+  final bool selected;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
     final dateText = Text(
-      '$date',
+      '${date.day}',
       style: StevType.caption.copyWith(
-        color: state == _DayState.today ? StevColors.onInk : StevColors.ink2,
-        fontWeight: state == _DayState.today ? StevType.w700 : StevType.w600,
+        color: selected ? StevColors.onInk : StevColors.ink2,
+        fontWeight: selected ? StevType.w700 : StevType.w600,
       ),
     );
 
-    return Column(
-      children: [
-        Text(letter, style: StevType.micro.copyWith(color: StevColors.ink2)),
-        const SizedBox(height: StevSpace.s2),
-        SizedBox.square(
-          dimension: 36,
-          child: switch (state) {
-            _DayState.today => DecoratedBox(
-              decoration: const BoxDecoration(
-                color: StevColors.ink,
-                shape: BoxShape.circle,
-              ),
-              child: Center(child: dateText),
-            ),
-            _DayState.past => CustomPaint(
-              painter: _DashedCirclePainter(),
-              child: Center(child: dateText),
-            ),
-            _DayState.future => Center(child: dateText),
-          },
+    return Semantics(
+      button: onPressed != null,
+      selected: selected,
+      label:
+          '${date.day}/${date.month}${state == _DayState.today ? ', hari ini' : ''}',
+      child: InkWell(
+        key: ValueKey(
+          'weekDay-${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}',
         ),
-      ],
+        onTap: onPressed,
+        customBorder: const CircleBorder(),
+        child: ExcludeSemantics(
+          child: Column(
+            children: [
+              Text(
+                letter,
+                style: StevType.micro.copyWith(color: StevColors.ink2),
+              ),
+              const SizedBox(height: StevSpace.s2),
+              SizedBox.square(
+                dimension: 36,
+                child: selected
+                    ? DecoratedBox(
+                        decoration: const BoxDecoration(
+                          color: StevColors.ink,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(child: dateText),
+                      )
+                    : state == _DayState.past
+                    ? CustomPaint(
+                        painter: _DashedCirclePainter(),
+                        child: Center(child: dateText),
+                      )
+                    : Center(child: dateText),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/stev_tokens.dart';
 import 'stev_brand.dart';
 
-enum StevTab { home, family, weekly }
+enum StevTab { home, family, weekly, profile }
 
 class StevTabBar extends StatelessWidget {
   const StevTabBar({
@@ -16,6 +16,7 @@ class StevTabBar extends StatelessWidget {
     required this.onFamily,
     required this.onScan,
     required this.onWeekly,
+    required this.onProfile,
   });
 
   final StevTab activeTab;
@@ -23,6 +24,7 @@ class StevTabBar extends StatelessWidget {
   final VoidCallback onFamily;
   final VoidCallback onScan;
   final VoidCallback onWeekly;
+  final VoidCallback onProfile;
 
   @override
   Widget build(BuildContext context) {
@@ -76,13 +78,30 @@ class StevTabBar extends StatelessWidget {
                             ],
                           ),
                         ),
-                        const SizedBox(width: 92),
+                        const SizedBox(width: 80),
                         Expanded(
-                          child: _TabItem(
-                            icon: const StevIcon(StevIconName.weekly),
-                            label: 'Mingguan',
-                            selected: activeTab == StevTab.weekly,
-                            onPressed: onWeekly,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _TabItem(
+                                  icon: const StevIcon(StevIconName.weekly),
+                                  label: 'Mingguan',
+                                  selected: activeTab == StevTab.weekly,
+                                  onPressed: onWeekly,
+                                ),
+                              ),
+                              Expanded(
+                                child: _TabItem(
+                                  icon: const Icon(
+                                    Icons.person_outline_rounded,
+                                    size: 24,
+                                  ),
+                                  label: 'Profil',
+                                  selected: activeTab == StevTab.profile,
+                                  onPressed: onProfile,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],

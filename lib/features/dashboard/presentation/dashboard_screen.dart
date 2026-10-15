@@ -8,6 +8,7 @@ import '../../../core/theme/stev_tokens.dart';
 import '../../../shared/widgets/stev_design_system.dart';
 import '../../../shared/widgets/drink_photo.dart';
 import '../../drinks/application/drink_log_controller.dart';
+import '../../drinks/data/drink_log_preferences.dart';
 import '../../drinks/domain/drink.dart';
 import '../../onboarding/data/onboarding_preferences.dart';
 import 'widgets/daily_sugar_card.dart';
@@ -33,6 +34,9 @@ class _DashboardScreenState extends State<DashboardScreen>
   Offset _flightStart = Offset.zero;
   Offset _flightTarget = Offset.zero;
   bool _flightReady = false;
+  DateTime? _selectedDate;
+  StoredDrinkLog? _selectedDayLog;
+  bool _loadingDay = false;
 
   @override
   void initState() {
@@ -56,6 +60,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     final controller = DrinkLogScope.read(context);
     if (!identical(controller, _drinkLogController)) {
       _drinkLogController = controller;
+      _selectedDate = controller.currentDate;
     }
     final event = controller.takePendingLoggedEvent();
     if (event != null) {
@@ -101,9 +106,87 @@ class _DashboardScreenState extends State<DashboardScreen>
     if (mounted) setState(() => _profile = profile);
   }
 
+  bool _isSameDay(DateTime first, DateTime second) =>
+      first.year == second.year &&
+      first.month == second.month &&
+      first.day == second.day;
+
+  Future<void> _selectDate(DateTime date) async {
+    final controller = _drinkLogController;
+    if (controller == null || _loadingDay) return;
+    if (_isSameDay(date, controller.currentDate)) {
+      setState(() {
+        _selectedDate = controller.currentDate;
+        _selectedDayLog = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _loadingDay = true;
+      _selectedDate = date;
+    });
+    final log = await controller.loadDay(date);
+    if (!mounted || !_isSameDay(_selectedDate!, date)) return;
+    setState(() {
+      _selectedDayLog = log;
+      _loadingDay = false;
+    });
+  }
+
+  Future<void> _confirmDelete(DrinkSelection selection) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus minuman?'),
+        content: Text(
+          '${selection.drink.name} akan dihapus dari catatan hari ini.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            key: const ValueKey('confirmDeleteDrinkButton'),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+    if (shouldDelete == true && mounted) {
+      _drinkLogController?.remove(selection.identityId);
+    }
+  }
+
+  String _dayHeading(DateTime selected, DateTime today) {
+    if (_isSameDay(selected, today)) return 'Hari ini';
+    final yesterday = today.subtract(const Duration(days: 1));
+    if (_isSameDay(selected, yesterday)) return 'Kemarin';
+    const days = [
+      'Senin',
+      'Selasa',
+      'Rabu',
+      'Kamis',
+      'Jumat',
+      'Sabtu',
+      'Minggu',
+    ];
+    return '${days[selected.weekday - 1]}, ${selected.day}/${selected.month}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final drinkLog = DrinkLogScope.watch(context);
+    final selectedDate = _selectedDate ?? drinkLog.currentDate;
+    final showingToday = _isSameDay(selectedDate, drinkLog.currentDate);
+    final visibleEntries = showingToday
+        ? drinkLog.entries
+        : _selectedDayLog?.entries ?? const <DrinkSelection>[];
+    final visibleTotal = showingToday
+        ? drinkLog.totalGrams
+        : _selectedDayLog?.totalGrams ?? 0;
 
     return Scaffold(
       key: const ValueKey('dashboardScreen'),
@@ -113,8 +196,9 @@ class _DashboardScreenState extends State<DashboardScreen>
         builder: (context, _) {
           final reduceMotion = MediaQuery.disableAnimationsOf(context);
           final progress = _loggedController.value;
-          final displayedTotal = _flightSelection == null || reduceMotion
-              ? drinkLog.totalGrams
+          final displayedTotal =
+              !showingToday || _flightSelection == null || reduceMotion
+              ? visibleTotal
               : lerpDouble(
                   _previousTotalGrams,
                   drinkLog.totalGrams,
@@ -144,15 +228,32 @@ class _DashboardScreenState extends State<DashboardScreen>
                           _PersonalizedGreeting(profile: _profile),
                         ],
                         const SizedBox(height: StevSpace.s5),
-                        const WeekStrip(),
+                        WeekStrip(
+                          today: drinkLog.currentDate,
+                          selectedDate: selectedDate,
+                          onSelected: _selectDate,
+                        ),
                         const SizedBox(height: StevSpace.s5),
                         DailySugarCard(totalGrams: displayedTotal),
                         const SizedBox(height: StevSpace.s10),
-                        Text('Hari ini', style: StevType.heading),
+                        Text(
+                          _dayHeading(selectedDate, drinkLog.currentDate),
+                          style: StevType.heading,
+                        ),
                         const SizedBox(height: 14),
+                        if (_loadingDay)
+                          const Center(child: CircularProgressIndicator())
+                        else if (visibleEntries.isEmpty)
+                          Text(
+                            'Belum ada minuman tercatat.',
+                            key: const ValueKey('emptyDrinkLog'),
+                            style: StevType.body.copyWith(
+                              color: StevColors.ink2,
+                            ),
+                          ),
                         for (
                           var index = 0;
-                          index < drinkLog.entries.length;
+                          index < visibleEntries.length;
                           index++
                         ) ...[
                           if (index > 0) const SizedBox(height: StevSpace.s3),
@@ -163,13 +264,25 @@ class _DashboardScreenState extends State<DashboardScreen>
                                     animation: _loggedController,
                                     reduceMotion: reduceMotion,
                                     child: DrinkRow(
-                                      drink: drinkLog.entries[index],
+                                      drink: visibleEntries[index],
+                                      onDelete: showingToday
+                                          ? () => _confirmDelete(
+                                              visibleEntries[index],
+                                            )
+                                          : null,
                                     ),
                                   )
-                                : DrinkRow(drink: drinkLog.entries[index]),
+                                : DrinkRow(
+                                    drink: visibleEntries[index],
+                                    onDelete: showingToday
+                                        ? () => _confirmDelete(
+                                            visibleEntries[index],
+                                          )
+                                        : null,
+                                  ),
                           ),
                         ],
-                        if (drinkLog.entries.isNotEmpty) ...[
+                        if (showingToday) ...[
                           const SizedBox(height: StevSpace.s10),
                           const _RiskAssessmentCard(),
                         ],
@@ -197,6 +310,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         onFamily: () => context.go('/family'),
         onScan: () => context.push('/scan'),
         onWeekly: () => context.go('/weekly'),
+        onProfile: () => context.go('/profile'),
       ),
     );
   }

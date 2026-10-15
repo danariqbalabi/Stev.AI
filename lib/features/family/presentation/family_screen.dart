@@ -102,6 +102,7 @@ class FamilyScreen extends StatelessWidget {
         onFamily: () {},
         onScan: () => context.push('/scan'),
         onWeekly: () => context.go('/weekly'),
+        onProfile: () => context.go('/profile'),
       ),
     );
   }
