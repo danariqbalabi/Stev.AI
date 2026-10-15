@@ -75,3 +75,89 @@ jobs:
           path: build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
           retention-days: 14
+
+  deploy-production-web:
+    name: Deploy production web
+    needs: verify-and-build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: stev-ai-production-web
+      cancel-in-progress: true
+    env:
+      VERCEL_ORG_ID: team_E771A8vjMKfsus3PzNTRDcpw
+      VERCEL_PROJECT_ID: prj_QljrEaSKVwKYeSCJxoknLzlbUdpl
+
+    steps:
+      - name: Check deployment credentials
+        id: credentials
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        shell: bash
+        run: |
+          if [[ -z "$VERCEL_TOKEN" ]]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Production deploy skipped. Add VERCEL_TOKEN to repository Actions secrets."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check out repository
+        if: steps.credentials.outputs.configured == 'true'
+        uses: actions/checkout@v7
+
+      - name: Set up Flutter
+        if: steps.credentials.outputs.configured == 'true'
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Set up Node.js
+        if: steps.credentials.outputs.configured == 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+
+      - name: Install Vercel CLI
+        if: steps.credentials.outputs.configured == 'true'
+        run: npm install --global vercel@64.2.0
+
+      - name: Pull production configuration
+        if: steps.credentials.outputs.configured == 'true'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: >-
+          vercel env pull "$RUNNER_TEMP/vercel.env"
+          --yes
+          --environment=production
+          --token="$VERCEL_TOKEN"
+
+      - name: Build configured Flutter web app
+        if: steps.credentials.outputs.configured == 'true'
+        shell: bash
+        run: |
+          set -a
+          source "$RUNNER_TEMP/vercel.env"
+          set +a
+          flutter pub get
+          flutter build web --release \
+            --dart-define="SUPABASE_URL=$SUPABASE_URL" \
+            --dart-define="SUPABASE_PUBLISHABLE_KEY=$SUPABASE_PUBLISHABLE_KEY" \
+            --dart-define="STEV_RECOGNITION_ENDPOINT=$STEV_RECOGNITION_ENDPOINT" \
+            --dart-define="STEV_RECOGNITION_TOKEN=${STEV_RECOGNITION_TOKEN:-}"
+
+      - name: Deploy production bundle
+        if: steps.credentials.outputs.configured == 'true'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel deploy build/web --prod --yes --token="$VERCEL_TOKEN"
+
+      - name: Verify production routes
+        if: steps.credentials.outputs.configured == 'true'
+        shell: bash
+        run: |
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 https://stev-ai.vercel.app/ > /dev/null
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 https://stev-ai.vercel.app/main.dart.js > /dev/null
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 https://stev-ai.vercel.app/family > /dev/null
