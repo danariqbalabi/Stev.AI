@@ -134,4 +134,52 @@ void main() {
     expect(summary.days[2].grams, isNull);
     expect(summary.savedGrams, 22);
   });
+
+  test('under-limit streak requires check-in and at most 50 grams', () async {
+    SharedPreferences.setMockInitialValues({});
+    final storage = DrinkLogPreferences();
+    final today = DateTime(2026, 10, 14);
+    for (final date in [
+      DateTime(2026, 10, 12),
+      DateTime(2026, 10, 13),
+      today,
+    ]) {
+      await storage.write(date, const [
+        DrinkSelection(drink: DrinkCatalog.tehMelatiKotak),
+      ], checkedIn: true);
+    }
+    final controller = await DrinkLogController.persistent(
+      preferences: storage,
+      now: today,
+    );
+    addTearDown(controller.dispose);
+
+    final streak = await controller.loadUnderLimitStreak();
+
+    expect(streak.days, 3);
+    expect(streak.todayActive, isTrue);
+  });
+
+  test('today over the limit turns the streak off', () async {
+    SharedPreferences.setMockInitialValues({});
+    final storage = DrinkLogPreferences();
+    final today = DateTime(2026, 10, 14);
+    await storage.write(DateTime(2026, 10, 13), const [
+      DrinkSelection(drink: DrinkCatalog.tehMelatiKotak),
+    ], checkedIn: true);
+    await storage.write(today, const [
+      DrinkSelection(drink: DrinkCatalog.bobaMilkTea),
+      DrinkSelection(drink: DrinkCatalog.tehMelatiKotak),
+    ], checkedIn: true);
+    final controller = await DrinkLogController.persistent(
+      preferences: storage,
+      now: today,
+    );
+    addTearDown(controller.dispose);
+
+    final streak = await controller.loadUnderLimitStreak();
+
+    expect(streak.days, 0);
+    expect(streak.todayActive, isFalse);
+  });
 }

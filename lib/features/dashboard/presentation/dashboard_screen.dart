@@ -37,6 +37,11 @@ class _DashboardScreenState extends State<DashboardScreen>
   DateTime? _selectedDate;
   StoredDrinkLog? _selectedDayLog;
   bool _loadingDay = false;
+  UnderLimitStreak _streak = const UnderLimitStreak(
+    days: 0,
+    todayActive: false,
+  );
+  var _streakRequest = 0;
 
   @override
   void initState() {
@@ -62,6 +67,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       _drinkLogController = controller;
       _selectedDate = controller.currentDate;
     }
+    unawaited(_refreshStreak());
     final event = controller.takePendingLoggedEvent();
     if (event != null) {
       _flightSelection = event.selection;
@@ -104,6 +110,23 @@ class _DashboardScreenState extends State<DashboardScreen>
   Future<void> _loadProfile() async {
     final profile = await OnboardingPreferences.readProfile();
     if (mounted) setState(() => _profile = profile);
+  }
+
+  Future<void> _refreshStreak() async {
+    final controller = _drinkLogController;
+    if (controller == null) return;
+    final request = ++_streakRequest;
+    final streak = await controller.loadUnderLimitStreak();
+    if (!mounted || request != _streakRequest) return;
+    setState(() => _streak = streak);
+  }
+
+  Future<void> _checkIn() async {
+    final controller = _drinkLogController;
+    if (controller == null) return;
+    controller.checkIn();
+    await controller.flush();
+    await _refreshStreak();
   }
 
   bool _isSameDay(DateTime first, DateTime second) =>
@@ -235,6 +258,15 @@ class _DashboardScreenState extends State<DashboardScreen>
                         ),
                         const SizedBox(height: StevSpace.s5),
                         DailySugarCard(totalGrams: displayedTotal),
+                        if (showingToday) ...[
+                          const SizedBox(height: StevSpace.s4),
+                          _UnderLimitStreakCard(
+                            streak: _streak,
+                            checkedIn: drinkLog.checkedInToday,
+                            totalGrams: drinkLog.totalGrams,
+                            onCheckIn: _checkIn,
+                          ),
+                        ],
                         const SizedBox(height: StevSpace.s10),
                         Text(
                           _dayHeading(selectedDate, drinkLog.currentDate),
@@ -311,6 +343,86 @@ class _DashboardScreenState extends State<DashboardScreen>
         onScan: () => context.push('/scan'),
         onWeekly: () => context.go('/weekly'),
         onProfile: () => context.go('/profile'),
+      ),
+    );
+  }
+}
+
+class _UnderLimitStreakCard extends StatelessWidget {
+  const _UnderLimitStreakCard({
+    required this.streak,
+    required this.checkedIn,
+    required this.totalGrams,
+    required this.onCheckIn,
+  });
+
+  final UnderLimitStreak streak;
+  final bool checkedIn;
+  final double totalGrams;
+  final VoidCallback onCheckIn;
+
+  @override
+  Widget build(BuildContext context) {
+    final isUnderLimit = totalGrams <= 50;
+    return GlassCard(
+      key: const ValueKey('underLimitStreakCard'),
+      padding: const EdgeInsets.all(StevSpace.s4),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: streak.todayActive
+                  ? StevColors.leaf.withValues(alpha: 0.16)
+                  : StevColors.canvas,
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                '🔥',
+                style: TextStyle(
+                  fontSize: 24,
+                  color: streak.todayActive ? null : StevColors.ink3,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: StevSpace.s3),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  streak.todayActive
+                      ? '${streak.days} hari di bawah 50 g'
+                      : checkedIn && !isUnderLimit
+                      ? 'Streak belum aktif'
+                      : streak.days > 0
+                      ? 'Lanjutkan streak ${streak.days} hari'
+                      : 'Mulai streak di bawah 50 g',
+                  key: const ValueKey('underLimitStreakTitle'),
+                  style: StevType.label,
+                ),
+                const SizedBox(height: StevSpace.s1),
+                Text(
+                  checkedIn
+                      ? isUnderLimit
+                            ? 'Check-in hari ini berhasil.'
+                            : 'Total hari ini melewati batas 50 g.'
+                      : 'Check-in saat total harianmu masih di bawah batas.',
+                  style: StevType.caption.copyWith(color: StevColors.ink2),
+                ),
+              ],
+            ),
+          ),
+          if (!checkedIn)
+            TextButton(
+              key: const ValueKey('dailySugarCheckInButton'),
+              onPressed: onCheckIn,
+              child: const Text('Check-in'),
+            ),
+        ],
       ),
     );
   }
