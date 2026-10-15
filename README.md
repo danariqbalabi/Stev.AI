@@ -253,6 +253,13 @@ flutter test
 flutter build web --release
 ```
 
+GitHub Actions menjalankan pemeriksaan yang sama untuk setiap push pada `main`, branch `feat/**`, branch `fix/**`, dan setiap pull request ke `main`. Workflow juga menghasilkan dua artifact yang dapat diunduh dari halaman Actions selama 14 hari:
+
+- Bundle web `build/web` untuk deployment demo.
+- APK debug `app-debug.apk` untuk instalasi pada perangkat Android.
+
+Konfigurasi CI tidak memakai `config/env.local.json` atau secret lokal. Karena itu build CI menggunakan katalog lokal dan adapter recognition demo; konfigurasi Supabase/Gemini tetap diberikan hanya saat deployment yang dipercaya.
+
 ## Workflow Git
 
 Setiap fitur dikembangkan pada branch terpisah, misalnya:

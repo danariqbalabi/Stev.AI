@@ -3,9 +3,9 @@
     "short_name": "Stev.AI",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "Understand the sugar in your drink and discover lower-sugar alternatives.",
+    "background_color": "#F5F5F7",
+    "theme_color": "#111113",
+    "description": "Lihat gula sebelum membeli dan temukan pilihan minuman yang lebih rendah gula.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
