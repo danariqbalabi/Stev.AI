@@ -77,6 +77,7 @@ Saat ini repository berisi alur MVP awal yang dapat diklik:
 - Fondasi Supabase untuk katalog remote, schema/RLS, seed 10 minuman, gambar remote, dan fallback offline ke katalog lokal.
 - Personalisasi Dashboard dari nama dan waktu beli minuman yang disimpan saat onboarding.
 - Skrining risiko diabetes untuk diri sendiri atau orang tua: delapan pertanyaan, kategori risiko, faktor utama, estimasi minimal untuk jawaban yang tidak diketahui, dan arahan pemeriksaan. Jawaban hanya diproses di memori perangkat dan tidak disimpan.
+- Ajak & Rujukan dengan pesan yang dapat diedit, share sheet sistem, informasi Cek Kesehatan Gratis, dan tanpa memasukkan skor atau jawaban kesehatan ke pesan.
 - Navigasi Android dan web.
 
 Edge Function recognition dan katalog cloud sudah tersedia di source code, tetapi function harus di-deploy dan diberi API key AI sebelum recognition nyata aktif. Tanpa konfigurasi endpoint, hasil recognition tetap memakai adapter demo lokal. Aturan Swap saat ini masih merupakan data demo lokal dari design handoff.
@@ -109,7 +110,7 @@ Font Onest disimpan lokal agar konsisten pada Android dan web. Lisensi SIL Open 
 
 ### Roadmap
 
-- Referral hasil skrining melalui pesan yang aman dibagikan tanpa data kesehatan rinci.
+- Notifikasi pengingat pemeriksaan tujuh hari setelah skrining.
 - Dataset recognition, evaluasi akurasi, dan rate limiting production.
 - Animasi penghematan gula dan confetti kontekstual.
 - Dukungan kategori makanan.

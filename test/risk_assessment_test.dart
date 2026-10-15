@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:steviai/app/app.dart';
 import 'package:steviai/app/router.dart';
 import 'package:steviai/features/risk_assessment/domain/risk_assessment.dart';
+import 'package:steviai/features/risk_assessment/presentation/risk_invite_screen.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -133,6 +134,52 @@ void main() {
       find.textContaining('Ini skrining, bukan diagnosis'),
       findsOneWidget,
     );
+    await tester.drag(
+      find.byKey(const ValueKey('riskResultScreen')),
+      const Offset(0, -500),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('openRiskInvite')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('riskInviteScreen')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('shares only the edited referral message', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    String? sharedMessage;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: RiskInviteScreen(
+          subject: RiskSubject.parent,
+          shareMessage: (message, origin) async {
+            sharedMessage = message;
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ajak & Rujukan'), findsOneWidget);
+    expect(find.text('Pesan buat Ibu/Bapak'), findsOneWidget);
+    expect(find.text('Dewasa 18+'), findsOneWidget);
+    expect(find.text('Puskesmas terdekat'), findsOneWidget);
+
+    const editedMessage = 'Bu, Sabtu kita cek gula darah bareng, yuk.';
+    await tester.enterText(
+      find.byKey(const ValueKey('riskInviteMessage')),
+      editedMessage,
+    );
+    await tester.tap(find.byKey(const ValueKey('shareRiskMessage')));
+    await tester.pumpAndSettle();
+
+    expect(sharedMessage, editedMessage);
+    expect(sharedMessage, isNot(contains('Risiko tinggi')));
+    expect(sharedMessage, isNot(contains('19')));
     expect(tester.takeException(), isNull);
   });
 }

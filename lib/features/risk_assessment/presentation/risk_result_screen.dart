@@ -192,6 +192,16 @@ class RiskResultScreen extends StatelessWidget {
                 style: StevType.caption.copyWith(color: StevColors.ink2),
               ),
               const SizedBox(height: StevSpace.s5),
+              StevButton(
+                key: const ValueKey('openRiskInvite'),
+                label: result.subject == RiskSubject.parent
+                    ? 'Ajak Ibu/Bapak periksa'
+                    : 'Periksa sekarang',
+                variant: StevButtonVariant.leaf,
+                onPressed: () =>
+                    context.push('/risk/invite', extra: result.subject),
+              ),
+              const SizedBox(height: StevSpace.s3),
               StevButton(label: 'Selesai', onPressed: () => context.go('/')),
             ],
           ),
