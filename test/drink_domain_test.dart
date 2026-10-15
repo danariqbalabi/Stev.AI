@@ -6,8 +6,8 @@ import 'package:steviai/features/drinks/domain/drink_swap.dart';
 
 void main() {
   group('drink catalog', () {
-    test('contains the ten drinks from the design handoff', () {
-      expect(DrinkCatalog.all, hasLength(10));
+    test('contains the handoff drinks and expanded 50-item demo catalog', () {
+      expect(DrinkCatalog.all, hasLength(50));
       expect(
         DrinkCatalog.all.map((drink) => drink.id),
         containsAll([
@@ -25,6 +25,21 @@ void main() {
       );
       expect(DrinkCatalog.findById('matcha'), DrinkCatalog.matcha);
       expect(DrinkCatalog.findById('unknown'), isNull);
+      expect(DrinkCatalog.all.map((drink) => drink.id).toSet(), hasLength(50));
+      expect(
+        DrinkCatalog.all.where(
+          (drink) => drink.category == DrinkCategory.packaged,
+        ),
+        hasLength(25),
+      );
+      expect(
+        DrinkCatalog.expandedDemo.every(
+          (drink) =>
+              drink.validationStatus == DrinkValidationStatus.demo &&
+              drink.estimated,
+        ),
+        isTrue,
+      );
     });
 
     test('formats estimated and label-based sugar values differently', () {
