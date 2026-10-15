@@ -29,6 +29,7 @@ class DrinkLogController extends ChangeNotifier {
     : _entries = List.of(initialEntries),
       _preferences = null,
       _today = null,
+      _now = DateTime.now,
       _savedGrams = 0,
       _checkedIn = false;
 
@@ -36,6 +37,7 @@ class DrinkLogController extends ChangeNotifier {
     Iterable<DrinkSelection> initialEntries,
     this._preferences,
     this._today,
+    this._now,
     this._savedGrams,
     this._checkedIn,
   ) : _entries = List.of(initialEntries);
@@ -51,9 +53,11 @@ class DrinkLogController extends ChangeNotifier {
   static Future<DrinkLogController> persistent({
     DrinkLogPreferences? preferences,
     DateTime? now,
+    DateTime Function()? nowProvider,
   }) async {
     final storage = preferences ?? DrinkLogPreferences();
-    final today = now ?? DateTime.now();
+    final clock = nowProvider ?? (now == null ? DateTime.now : () => now);
+    final today = clock();
     await storage.removeLegacyDemoSeed(today, demoEntries);
     final storedDay = await storage.readDay(today);
     final initialEntries = storedDay?.entries ?? const <DrinkSelection>[];
@@ -67,6 +71,7 @@ class DrinkLogController extends ChangeNotifier {
       initialEntries,
       storage,
       today,
+      clock,
       savedGrams,
       storedDay?.checkedIn ?? false,
     );
@@ -74,11 +79,13 @@ class DrinkLogController extends ChangeNotifier {
 
   final List<DrinkSelection> _entries;
   final DrinkLogPreferences? _preferences;
-  final DateTime? _today;
+  DateTime? _today;
+  final DateTime Function() _now;
   double _savedGrams;
   bool _checkedIn;
   LoggedDrinkEvent? _pendingLoggedEvent;
   Future<void> _pendingWrite = Future.value();
+  Future<bool>? _refreshInProgress;
 
   UnmodifiableListView<DrinkSelection> get entries =>
       UnmodifiableListView(_entries);
@@ -90,7 +97,57 @@ class DrinkLogController extends ChangeNotifier {
 
   bool get checkedInToday => _checkedIn;
 
-  DateTime get currentDate => _today ?? DateTime.now();
+  DateTime get currentDate => _today ?? _now();
+
+  static bool _isSameDay(DateTime? first, DateTime second) =>
+      first != null &&
+      first.year == second.year &&
+      first.month == second.month &&
+      first.day == second.day;
+
+  bool _requiresRollover([DateTime? now]) =>
+      _preferences != null && !_isSameDay(_today, now ?? _now());
+
+  Future<bool> refreshForCurrentDate({DateTime? now}) async {
+    final existing = _refreshInProgress;
+    if (existing != null) return existing;
+    final operation = _performDateRefresh(now: now);
+    _refreshInProgress = operation;
+    try {
+      return await operation;
+    } finally {
+      if (identical(_refreshInProgress, operation)) {
+        _refreshInProgress = null;
+      }
+    }
+  }
+
+  Future<bool> _performDateRefresh({DateTime? now}) async {
+    final preferences = _preferences;
+    if (preferences == null) return false;
+    final target = now ?? _now();
+    if (_isSameDay(_today, target)) return false;
+
+    await _pendingWrite;
+    final storedDay = await preferences.readDay(target);
+    _entries
+      ..clear()
+      ..addAll(storedDay?.entries ?? const <DrinkSelection>[]);
+    _savedGrams = storedDay?.savedGrams ?? 0;
+    _checkedIn = storedDay?.checkedIn ?? false;
+    _pendingLoggedEvent = null;
+    _today = target;
+
+    if (storedDay == null) {
+      await preferences.write(
+        target,
+        const <DrinkSelection>[],
+        checkedIn: false,
+      );
+    }
+    notifyListeners();
+    return true;
+  }
 
   LoggedDrinkEvent? takePendingLoggedEvent() {
     final event = _pendingLoggedEvent;
@@ -98,11 +155,31 @@ class DrinkLogController extends ChangeNotifier {
     return event;
   }
 
-  void log(DrinkSelection selection) {
+  Future<void> log(DrinkSelection selection) {
+    if (_requiresRollover()) return _logAfterRollover(selection);
+    _logSelection(selection);
+    return Future.value();
+  }
+
+  Future<void> _logAfterRollover(DrinkSelection selection) async {
+    await refreshForCurrentDate();
     _logSelection(selection);
   }
 
-  void logSwap(DrinkSelection selection, {required double savedGrams}) {
+  Future<void> logSwap(DrinkSelection selection, {required double savedGrams}) {
+    if (_requiresRollover()) {
+      return _logSwapAfterRollover(selection, savedGrams);
+    }
+    _savedGrams += savedGrams.clamp(0, double.infinity);
+    _logSelection(selection);
+    return Future.value();
+  }
+
+  Future<void> _logSwapAfterRollover(
+    DrinkSelection selection,
+    double savedGrams,
+  ) async {
+    await refreshForCurrentDate();
     _savedGrams += savedGrams.clamp(0, double.infinity);
     _logSelection(selection);
   }
@@ -119,7 +196,8 @@ class DrinkLogController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void remove(String identityId) {
+  Future<void> remove(String identityId) async {
+    if (_requiresRollover()) await refreshForCurrentDate();
     final previousLength = _entries.length;
     _entries.removeWhere((entry) => entry.identityId == identityId);
     if (_entries.length != previousLength) {
@@ -128,14 +206,16 @@ class DrinkLogController extends ChangeNotifier {
     }
   }
 
-  void clear() {
+  Future<void> clear() async {
+    if (_requiresRollover()) await refreshForCurrentDate();
     if (_entries.isEmpty) return;
     _entries.clear();
     _persist();
     notifyListeners();
   }
 
-  void checkIn() {
+  Future<void> checkIn() async {
+    if (_requiresRollover()) await refreshForCurrentDate();
     if (_checkedIn) return;
     _checkedIn = true;
     _persist();
@@ -165,6 +245,9 @@ class DrinkLogController extends ChangeNotifier {
   }
 
   Future<UnderLimitStreak> loadUnderLimitStreak({DateTime? anchor}) async {
+    if (anchor == null && _requiresRollover()) {
+      await refreshForCurrentDate();
+    }
     await _pendingWrite;
     final target = anchor ?? currentDate;
     var cursor = DateTime(target.year, target.month, target.day);
@@ -189,8 +272,11 @@ class DrinkLogController extends ChangeNotifier {
   }
 
   Future<WeeklySugarSummary> loadWeeklySummary({DateTime? anchor}) async {
+    if (anchor == null && _requiresRollover()) {
+      await refreshForCurrentDate();
+    }
     await _pendingWrite;
-    final target = anchor ?? _today ?? DateTime.now();
+    final target = anchor ?? currentDate;
     final monday = DateTime(
       target.year,
       target.month,

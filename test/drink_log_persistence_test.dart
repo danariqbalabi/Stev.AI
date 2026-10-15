@@ -70,6 +70,45 @@ void main() {
     expect(next.totalGrams, 0);
   });
 
+  test('an active controller rolls over without restarting the app', () async {
+    SharedPreferences.setMockInitialValues({});
+    final storage = DrinkLogPreferences();
+    var clock = DateTime(2026, 12, 31, 23, 59);
+    final controller = await DrinkLogController.persistent(
+      preferences: storage,
+      nowProvider: () => clock,
+    );
+    addTearDown(controller.dispose);
+
+    await controller.log(
+      const DrinkSelection(drink: DrinkCatalog.tehMelatiKotak),
+    );
+    await controller.checkIn();
+    await controller.flush();
+    expect(controller.totalGrams, 18);
+    expect(controller.checkedInToday, isTrue);
+
+    clock = DateTime(2027, 1, 1, 0, 1);
+    expect(await controller.refreshForCurrentDate(), isTrue);
+    expect(controller.currentDate, clock);
+    expect(controller.entries, isEmpty);
+    expect(controller.totalGrams, 0);
+    expect(controller.savedGrams, 0);
+    expect(controller.checkedInToday, isFalse);
+
+    final previousDay = await controller.loadDay(DateTime(2026, 12, 31));
+    expect(previousDay?.totalGrams, 18);
+    expect(previousDay?.checkedIn, isTrue);
+
+    await controller.log(
+      const DrinkSelection(drink: DrinkCatalog.kopiSusuKalengNescafe),
+    );
+    await controller.flush();
+    expect((await controller.loadDay(clock))?.totalGrams, 30);
+    expect((await controller.loadDay(DateTime(2026, 12, 31)))?.totalGrams, 18);
+    expect(await controller.refreshForCurrentDate(), isFalse);
+  });
+
   test(
     'catalog sugar level and photo presentation survive serialization',
     () async {

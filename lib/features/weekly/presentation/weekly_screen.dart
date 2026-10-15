@@ -15,17 +15,26 @@ class WeeklyScreen extends StatefulWidget {
 
 class _WeeklyScreenState extends State<WeeklyScreen> {
   DrinkLogController? _controller;
+  DateTime? _summaryDate;
   Future<WeeklySugarSummary>? _summary;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final controller = DrinkLogScope.read(context);
-    if (!identical(controller, _controller)) {
+    if (!identical(controller, _controller) ||
+        !_isSameDay(_summaryDate, controller.currentDate)) {
       _controller = controller;
+      _summaryDate = controller.currentDate;
       _summary = controller.loadWeeklySummary();
     }
   }
+
+  bool _isSameDay(DateTime? first, DateTime second) =>
+      first != null &&
+      first.year == second.year &&
+      first.month == second.month &&
+      first.day == second.day;
 
   @override
   Widget build(BuildContext context) {

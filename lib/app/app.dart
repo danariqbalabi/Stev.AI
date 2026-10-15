@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -25,17 +27,19 @@ class StevAiApp extends StatefulWidget {
   State<StevAiApp> createState() => _StevAiAppState();
 }
 
-class _StevAiAppState extends State<StevAiApp> {
+class _StevAiAppState extends State<StevAiApp> with WidgetsBindingObserver {
   late final DrinkLogController _drinkLogController;
   late final bool _ownsDrinkLogController;
   late final DrinkCatalogController _drinkCatalogController;
   late final bool _ownsDrinkCatalogController;
   late final FamilyController _familyController;
   late final bool _ownsFamilyController;
+  Timer? _dayRolloverTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _ownsDrinkLogController = widget.drinkLogController == null;
     _drinkLogController =
         widget.drinkLogController ?? DrinkLogController.demo();
@@ -45,10 +49,34 @@ class _StevAiAppState extends State<StevAiApp> {
         DrinkCatalogController.forBackend(null);
     _ownsFamilyController = widget.familyController == null;
     _familyController = widget.familyController ?? FamilyController();
+    _scheduleDayRollover();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_refreshCurrentDate());
+    }
+  }
+
+  void _scheduleDayRollover() {
+    _dayRolloverTimer?.cancel();
+    final now = DateTime.now();
+    final nextDay = DateTime(now.year, now.month, now.day + 1);
+    _dayRolloverTimer = Timer(nextDay.difference(now), () {
+      unawaited(_refreshCurrentDate());
+    });
+  }
+
+  Future<void> _refreshCurrentDate() async {
+    await _drinkLogController.refreshForCurrentDate();
+    if (mounted) _scheduleDayRollover();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _dayRolloverTimer?.cancel();
     if (_ownsDrinkLogController) _drinkLogController.dispose();
     if (_ownsDrinkCatalogController) _drinkCatalogController.dispose();
     if (_ownsFamilyController) _familyController.dispose();

@@ -33,9 +33,9 @@ class _ResultScreenState extends State<ResultScreen> {
   DrinkSelection get _selection =>
       DrinkSelection(drink: widget.drink, sugarLevel: _sugarLevel);
 
-  void _chooseDrink() {
-    DrinkLogScope.read(context).log(_selection);
-    context.go('/');
+  Future<void> _chooseDrink() async {
+    await DrinkLogScope.read(context).log(_selection);
+    if (mounted) context.go('/');
   }
 
   void _openSwap() {
