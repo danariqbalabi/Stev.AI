@@ -42,7 +42,7 @@ Untuk minuman kemasan, angka gula direncanakan berasal dari informasi label atau
 ## Alur demo utama
 
 1. Pengguna membuka Dashboard dan menekan **Scan minuman**.
-2. Pengguna memilih **Foto Minuman** untuk mengambil foto minuman atau menu, atau **Barcode** untuk mencari produk kemasan. **Label Gizi** masih berstatus **Segera hadir**.
+2. Pengguna memilih **Foto Minuman**, **Barcode**, atau **Label Gizi**. Foto minuman masuk identifikasi katalog; barcode mencari produk; label gizi dibaca untuk dikonfirmasi sebelum dicatat.
 3. Aplikasi memberikan tiga kandidat minuman.
 4. Pengguna memilih kandidat dan level gula jika minuman tidak memiliki label kemasan.
 5. Aplikasi menampilkan estimasi gula, visual sendok, dan sisa referensi harian.
@@ -61,7 +61,9 @@ Saat ini repository berisi alur MVP awal yang dapat diklik:
 - State log minuman harian yang menghitung total secara dinamis dan mengganti entri produk yang sama.
 - Aturan Swap terpusat untuk level gula minuman non-kemasan dan alternatif produk kemasan yang tersedia.
 - Kamera Android/Web dengan preview hasil foto.
-- Halaman pemilihan mode scan sebelum membuka kamera, dengan Foto Minuman dan Barcode aktif; Label Gizi berstatus Segera hadir. Pencarian manual tetap tersedia.
+- Halaman pemilihan tiga mode scan aktif: Foto Minuman, Barcode, dan Label Gizi. Pencarian manual tetap tersedia.
+- OCR label gizi melalui Gemini di Supabase Edge Function, dengan pembacaan gula terpisah dari karbohidrat dan pembedaan per sajian/per 100 ml/per kemasan.
+- Form konfirmasi OCR dengan foto, bukti teks label, koreksi angka, bagian kemasan yang diminum, perhitungan lokal, serta persetujuan pengguna sebelum masuk log pribadi. Data tidak terbaca tidak dianggap nol; input label manual tersedia saat kamera/OCR gagal.
 - Scanner barcode EAN-8/EAN-13/UPC-A Android/Web, input angka manual, pemeriksaan checksum, serta pencarian Supabase lalu Open Food Facts.
 - Konfirmasi barcode menampilkan sumber, gula per porsi, porsi yang dapat diubah, dan total gula sebelum dicatat ke log pribadi. Produk dengan data gula/volume yang tidak lengkap diarahkan ke pencarian atau input manual.
 - Fallback pemilihan gambar dari galeri/file.
@@ -100,7 +102,37 @@ Data Open Food Facts belum diverifikasi Stev.AI. Pengguna perlu mengecek varian 
 
 Sumber eksternal: [Open Food Facts](https://world.openfoodfacts.org), database berlisensi [Open Database License (ODbL)](https://opendatacommons.org/licenses/odbl/1-0/). API eksternal memerlukan internet; pada Web, kamera memerlukan HTTPS atau localhost dan izin browser. Gambar produk mengikuti sumbernya dan memiliki fallback jika gagal dimuat.
 
-Uji pada perangkat fisik: scan produk, ubah porsi, catat, scan lagi, tolak izin kamera lalu ketik barcode, dan coba barcode yang belum tersedia. Browser dapat mengunduh library deteksi barcode saat pertama dibuka. Fitur Label Gizi/OCR menyusul.
+Uji pada perangkat fisik: scan produk, ubah porsi, catat, scan lagi, tolak izin kamera lalu ketik barcode, dan coba barcode yang belum tersedia. Browser dapat mengunduh library deteksi barcode saat pertama dibuka. Barcode yang tidak ditemukan juga dapat dilanjutkan ke **Scan Label Gizi**.
+
+## Scan Label Gizi (OCR)
+
+Mode ini memakai kamera/galeri yang sama dengan Foto Minuman. Foto dikirim ke `${SUPABASE_URL}/functions/v1/read-nutrition-label`; API key Gemini tetap berada di Supabase Secrets. Tidak perlu environment variable baru di Vercel: `SUPABASE_URL` dan `SUPABASE_PUBLISHABLE_KEY` yang sudah ada dipakai otomatis.
+
+Deploy backend sebelum merilis UI:
+
+```powershell
+npx supabase functions deploy read-nutrition-label
+```
+
+Function memakai secret `GEMINI_API_KEY` dan opsional `GEMINI_MODEL`, sama dengan recognition. Backend memeriksa public key ke REST Supabase sebelum memanggil Gemini, membatasi foto JPEG/PNG/WebP hingga 8 MB, serta memakai timeout. Foto dan hasil OCR tidak ditulis ke katalog publik atau Storage oleh function ini.
+
+Gemini hanya mengekstrak teks, angka gula, unit, dasar perhitungan, dan takaran yang benar-benar terlihat. Nilai mg dinormalisasi oleh backend. Confidence di bawah 0,75, label tanpa gula yang jelas, karbohidrat saja, nilai `<1 g`, dan basis per 100 gram ditolak agar pengguna memotret ulang atau mengisi manual. Confidence model tidak menjamin kebenaran; hasil tetap perlu dicocokkan dengan label oleh pengguna.
+
+Perhitungan aplikasi:
+
+- Per sajian: gula × jumlah sajian per kemasan × bagian kemasan yang diminum.
+- Per 100 ml: gula × (volume kemasan / 100) × bagian yang diminum.
+- Per kemasan: gula × bagian yang diminum; jumlah sajian tidak dikalikan lagi.
+
+Jumlah sajian/volume yang tidak terbaca dibiarkan kosong dan wajib diisi jika dibutuhkan. Nilai `0 g` hanya diterima jika memang terbaca. User bisa mengoreksi dasar perhitungan, angka gula, jumlah sajian, volume, dan memilih seluruh/setengah/seperempat/tiga perempat kemasan. Setiap perubahan membatalkan centang konfirmasi sebelumnya. Catatan tetap berstatus belum diverifikasi; gambar dan teks OCR tidak ikut disimpan di log.
+
+Tes parsing backend dapat dijalankan dengan Node 24:
+
+```powershell
+node --test supabase/functions/recognize-drink/recognition.test.ts supabase/functions/read-nutrition-label/nutrition.test.ts
+```
+
+Smoke test perangkat: label 9 g dengan 2 sajian menghasilkan 18 g untuk seluruh kemasan, 9 g untuk setengah kemasan; label 6 g/100 ml dan botol 300 ml menghasilkan 18 g. Coba juga label buram, data sajian kosong, izin kamera ditolak, input manual, dan foto ulang setelah kembali dari form.
 
 ## Design system
 

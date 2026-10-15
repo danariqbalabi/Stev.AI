@@ -54,6 +54,14 @@ jobs:
       - name: Run tests
         run: flutter test
 
+      - name: Set up Node.js for Edge Function tests
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+
+      - name: Test recognition and nutrition parsing
+        run: node --test supabase/functions/recognize-drink/recognition.test.ts supabase/functions/read-nutrition-label/nutrition.test.ts
+
       - name: Build web demo
         run: flutter build web --release
 

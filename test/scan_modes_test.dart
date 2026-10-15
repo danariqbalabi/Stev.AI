@@ -29,8 +29,8 @@ void main() {
       final tapTarget = tester.widget<InkWell>(
         find.descendant(of: card, matching: find.byType(InkWell)),
       );
-      expect(tapTarget.onTap, isNull);
-      expect(find.text('Segera hadir'), findsWidgets);
+      expect(tapTarget.onTap, isNotNull);
+      expect(find.text('Segera hadir'), findsNothing);
     }
     expect(find.text('Label Gizi'), findsOneWidget);
 

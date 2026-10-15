@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import '../core/theme/stev_tokens.dart';
 import '../features/auth/presentation/auth_screen.dart';
 import '../features/barcode/presentation/barcode_scan_screen.dart';
+import '../features/nutrition/domain/nutrition_label.dart';
+import '../features/nutrition/presentation/nutrition_confirmation_screen.dart';
 import '../features/confirmation/presentation/confirmation_screen.dart';
 import '../features/custom_drink/presentation/custom_drink_screen.dart';
 import '../features/dashboard/presentation/dashboard_screen.dart';
@@ -80,7 +82,23 @@ GoRouter createAppRouter({required bool onboardingComplete}) {
             path: 'barcode',
             builder: (context, state) => const BarcodeScanScreen(),
           ),
+          GoRoute(
+            path: 'label',
+            builder: (context, state) => const ScanScreen(labelMode: true),
+          ),
         ],
+      ),
+      GoRoute(
+        path: '/nutrition/manual',
+        builder: (context, state) => const NutritionConfirmationScreen(),
+      ),
+      GoRoute(
+        path: '/nutrition/confirm',
+        redirect: (context, state) =>
+            state.extra is NutritionScanResult ? null : '/scan/label',
+        builder: (context, state) => NutritionConfirmationScreen(
+          result: state.extra! as NutritionScanResult,
+        ),
       ),
       GoRoute(
         path: '/manual',
