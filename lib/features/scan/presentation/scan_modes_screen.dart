@@ -32,11 +32,12 @@ class ScanModesScreen extends StatelessWidget {
                 onTap: () => context.push('/scan/photo'),
               ),
               const SizedBox(height: StevSpace.s4),
-              const _ScanModeCard(
-                key: ValueKey('scanMode-barcode'),
+              _ScanModeCard(
+                key: const ValueKey('scanMode-barcode'),
                 icon: Icons.barcode_reader,
                 title: 'Barcode',
                 description: 'Cari produk kemasan lewat barcode yang tercetak di kemasan.',
+                onTap: () => context.push('/scan/barcode'),
               ),
               const SizedBox(height: StevSpace.s4),
               const _ScanModeCard(

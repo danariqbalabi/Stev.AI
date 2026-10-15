@@ -23,7 +23,7 @@ void main() {
     expect(find.text('Menyiapkan kamera...'), findsNothing);
     expect(find.byKey(const ValueKey('galleryButton')), findsNothing);
 
-    for (final mode in ['barcode', 'label']) {
+    for (final mode in ['label']) {
       final card = find.byKey(ValueKey('scanMode-$mode'));
       await tester.scrollUntilVisible(card, 100);
       final tapTarget = tester.widget<InkWell>(
