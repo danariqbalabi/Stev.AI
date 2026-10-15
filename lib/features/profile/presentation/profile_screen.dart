@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/stev_tokens.dart';
 import '../../../shared/widgets/stev_design_system.dart';
 import '../../onboarding/data/onboarding_preferences.dart';
+import '../../risk_assessment/data/risk_history_preferences.dart';
+import '../../risk_assessment/domain/risk_assessment.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -16,6 +18,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   OnboardingProfile _profile = const OnboardingProfile();
+  List<RiskHistoryEntry> _riskHistory = const [];
 
   @override
   void initState() {
@@ -25,7 +28,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _loadProfile() async {
     final profile = await OnboardingPreferences.readProfile();
-    if (mounted) setState(() => _profile = profile);
+    final history = await RiskHistoryPreferences().read();
+    if (mounted) {
+      setState(() {
+        _profile = profile;
+        _riskHistory = history;
+      });
+    }
   }
 
   Future<void> _editProfile() async {
@@ -78,6 +87,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
               const SizedBox(height: StevSpace.s4),
+              Text('Riwayat cek risiko', style: StevType.heading),
+              const SizedBox(height: StevSpace.s3),
+              if (_riskHistory.isEmpty)
+                GlassCard(
+                  key: const ValueKey('emptyRiskHistory'),
+                  padding: const EdgeInsets.all(StevSpace.s4),
+                  child: Text(
+                    'Belum ada hasil cek risiko yang tersimpan.',
+                    style: StevType.body.copyWith(color: StevColors.ink2),
+                  ),
+                )
+              else
+                for (final entry in _riskHistory) ...[
+                  _RiskHistoryCard(entry: entry),
+                  const SizedBox(height: StevSpace.s3),
+                ],
+              const SizedBox(height: StevSpace.s2),
               GlassCard(
                 padding: const EdgeInsets.all(StevSpace.s4),
                 child: Row(
@@ -106,6 +132,82 @@ class _ProfileScreenState extends State<ProfileScreen> {
         onScan: () => context.push('/scan'),
         onWeekly: () => context.go('/weekly'),
         onProfile: () {},
+      ),
+    );
+  }
+}
+
+class _RiskHistoryCard extends StatelessWidget {
+  const _RiskHistoryCard({required this.entry});
+
+  final RiskHistoryEntry entry;
+
+  String get _levelLabel => switch (entry.level) {
+    RiskLevel.low => 'Rendah',
+    RiskLevel.slightlyElevated => 'Sedikit meningkat',
+    RiskLevel.medium => 'Sedang',
+    RiskLevel.high => 'Tinggi',
+    RiskLevel.veryHigh => 'Sangat tinggi',
+  };
+
+  String get _dateLabel {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agu',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
+    ];
+    return '${entry.checkedAt.day} ${months[entry.checkedAt.month - 1]} ${entry.checkedAt.year}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      padding: EdgeInsets.zero,
+      radius: StevRadius.row,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          key: ValueKey('riskHistory-${entry.id}'),
+          onTap: () => context.push('/risk/result', extra: entry.toResult()),
+          borderRadius: BorderRadius.circular(StevRadius.row),
+          child: Padding(
+            padding: const EdgeInsets.all(StevSpace.s4),
+            child: Row(
+              children: [
+                const Icon(Icons.health_and_safety_outlined),
+                const SizedBox(width: StevSpace.s3),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Risiko $_levelLabel • skor ${entry.score}',
+                        style: StevType.label,
+                      ),
+                      const SizedBox(height: StevSpace.s1),
+                      Text(
+                        '${entry.subject == RiskSubject.self ? 'Diri sendiri' : 'Ayah/Ibu'} • $_dateLabel',
+                        style: StevType.caption.copyWith(
+                          color: StevColors.ink2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

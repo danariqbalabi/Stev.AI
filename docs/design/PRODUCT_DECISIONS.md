@@ -42,8 +42,10 @@ Terakhir diperbarui: 15 Oktober 2026.
   `BMI = berat_kg / (tinggi_meter * tinggi_meter)`.
 - BMI dibulatkan menjadi satu desimal sebelum dipetakan ke kategori:
   `<25`, `25-30`, atau `>30`.
-- Tinggi, berat, BMI, jawaban, dan skor hanya berada di memori selama alur Cek
-  Risiko dan tidak disimpan atau dikirim ke server.
+- Tinggi, berat, BMI, lingkar pinggang, dan jawaban mentah hanya berada di
+  memori selama alur Cek Risiko dan tidak disimpan atau dikirim ke server.
+- Profil menyimpan maksimal 20 ringkasan hasil secara lokal: tanggal, subjek,
+  level, skor, dan maksimal tiga faktor utama.
 - Lingkar pinggang diisi dalam sentimeter dan membutuhkan pilihan Pria/Wanita
   karena batas FINDRISC berbeda. Nilai batas masuk rentang tengah.
 

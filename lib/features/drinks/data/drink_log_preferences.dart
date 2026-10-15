@@ -9,10 +9,12 @@ class StoredDrinkLog {
   StoredDrinkLog({
     required Iterable<DrinkSelection> entries,
     required this.savedGrams,
+    this.checkedIn = false,
   }) : entries = List.unmodifiable(entries);
 
   final List<DrinkSelection> entries;
   final double savedGrams;
+  final bool checkedIn;
 
   double get totalGrams =>
       entries.fold(0, (total, selection) => total + selection.grams);
@@ -81,7 +83,12 @@ class DrinkLogPreferences {
         final selection = _selectionFromJson(Map<String, Object?>.from(value));
         if (selection != null) entries.add(selection);
       }
-      return StoredDrinkLog(entries: entries, savedGrams: savedGrams);
+      final checkedIn = decoded is Map && decoded['checkedIn'] == true;
+      return StoredDrinkLog(
+        entries: entries,
+        savedGrams: savedGrams,
+        checkedIn: checkedIn,
+      );
     } catch (_) {
       return null;
     }
@@ -91,12 +98,14 @@ class DrinkLogPreferences {
     DateTime date,
     Iterable<DrinkSelection> entries, {
     double savedGrams = 0,
+    bool checkedIn = false,
   }) async {
     final preferences = await SharedPreferences.getInstance();
     final normalizedDate = _formatDate(date);
     final encoded = jsonEncode({
       'entries': entries.map(_selectionToJson).toList(),
       'savedGrams': savedGrams.clamp(0, double.infinity),
+      'checkedIn': checkedIn,
     });
     await preferences.setString(_keyFor(date), encoded);
     await preferences.setString(lastActiveDateKey, normalizedDate);

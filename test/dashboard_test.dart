@@ -8,6 +8,8 @@ import 'package:steviai/features/drinks/data/drink_catalog.dart';
 import 'package:steviai/features/drinks/data/drink_log_preferences.dart';
 import 'package:steviai/features/drinks/domain/drink.dart';
 import 'package:steviai/features/onboarding/data/onboarding_preferences.dart';
+import 'package:steviai/features/risk_assessment/data/risk_history_preferences.dart';
+import 'package:steviai/features/risk_assessment/domain/risk_assessment.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -32,10 +34,15 @@ void main() {
     expect(find.text('Gula hari ini'), findsOneWidget);
     expect(find.text('Teh melati kotak'), findsOneWidget);
     expect(find.text('18 g'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Es teh manis'), 200);
     expect(find.text('Es teh manis'), findsOneWidget);
     expect(find.text('≈14 g'), findsOneWidget);
     expect(find.text('Beranda'), findsOneWidget);
     expect(find.text('Mingguan'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('riskAssessmentCard')),
+      200,
+    );
     expect(find.byKey(const ValueKey('riskAssessmentCard')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -76,6 +83,60 @@ void main() {
     expect(find.byKey(const ValueKey('editProfileButton')), findsOneWidget);
   });
 
+  testWidgets('profile shows saved risk assessment history', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    await RiskHistoryPreferences().add(
+      const RiskAssessmentResult(
+        subject: RiskSubject.self,
+        level: RiskLevel.medium,
+        topFactors: ['Riwayat keluarga inti'],
+        score: 12,
+      ),
+      checkedAt: DateTime(2026, 10, 15),
+    );
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final router = createAppRouter(onboardingComplete: true)..go('/profile');
+    addTearDown(router.dispose);
+    await tester.pumpWidget(StevAiApp(router: router));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('Riwayat cek risiko'), findsOneWidget);
+    expect(find.text('Risiko Sedang • skor 12'), findsOneWidget);
+    expect(find.text('Diri sendiri • 15 Okt 2026'), findsOneWidget);
+  });
+
+  testWidgets('check-in activates an under-limit streak', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final drinkLog = DrinkLogController(
+      initialEntries: const [
+        DrinkSelection(drink: DrinkCatalog.tehMelatiKotak),
+      ],
+    );
+    final router = createAppRouter(onboardingComplete: true);
+    addTearDown(router.dispose);
+    addTearDown(drinkLog.dispose);
+    await tester.pumpWidget(
+      StevAiApp(router: router, drinkLogController: drinkLog),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await tester.tap(find.byKey(const ValueKey('dailySugarCheckInButton')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(drinkLog.checkedInToday, isTrue);
+    expect(find.text('1 hari di bawah 50 g'), findsOneWidget);
+  });
+
   testWidgets('today drink can be deleted after confirmation', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -95,9 +156,12 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 300));
 
-    await tester.tap(
-      find.byKey(const ValueKey('deleteDrink-teh-melati-kotak')),
+    final deleteButton = find.byKey(
+      const ValueKey('deleteDrink-teh-melati-kotak'),
     );
+    await tester.ensureVisible(deleteButton);
+    await tester.pump();
+    await tester.tap(deleteButton);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('Hapus minuman?'), findsOneWidget);

@@ -17,18 +17,27 @@ class LoggedDrinkEvent {
   final double previousTotalGrams;
 }
 
+class UnderLimitStreak {
+  const UnderLimitStreak({required this.days, required this.todayActive});
+
+  final int days;
+  final bool todayActive;
+}
+
 class DrinkLogController extends ChangeNotifier {
   DrinkLogController({Iterable<DrinkSelection> initialEntries = const []})
     : _entries = List.of(initialEntries),
       _preferences = null,
       _today = null,
-      _savedGrams = 0;
+      _savedGrams = 0,
+      _checkedIn = false;
 
   DrinkLogController._persistent(
     Iterable<DrinkSelection> initialEntries,
     this._preferences,
     this._today,
     this._savedGrams,
+    this._checkedIn,
   ) : _entries = List.of(initialEntries);
 
   static const demoEntries = <DrinkSelection>[
@@ -59,6 +68,7 @@ class DrinkLogController extends ChangeNotifier {
       storage,
       today,
       savedGrams,
+      storedDay?.checkedIn ?? false,
     );
   }
 
@@ -66,6 +76,7 @@ class DrinkLogController extends ChangeNotifier {
   final DrinkLogPreferences? _preferences;
   final DateTime? _today;
   double _savedGrams;
+  bool _checkedIn;
   LoggedDrinkEvent? _pendingLoggedEvent;
   Future<void> _pendingWrite = Future.value();
 
@@ -76,6 +87,8 @@ class DrinkLogController extends ChangeNotifier {
       _entries.fold(0, (total, selection) => total + selection.grams);
 
   double get savedGrams => _savedGrams;
+
+  bool get checkedInToday => _checkedIn;
 
   DateTime get currentDate => _today ?? DateTime.now();
 
@@ -122,6 +135,13 @@ class DrinkLogController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void checkIn() {
+    if (_checkedIn) return;
+    _checkedIn = true;
+    _persist();
+    notifyListeners();
+  }
+
   Future<void> flush() => _pendingWrite;
 
   Future<StoredDrinkLog?> loadDay(DateTime date) async {
@@ -134,10 +154,38 @@ class DrinkLogController extends ChangeNotifier {
           current.month == date.month &&
           current.day == date.day;
       return isCurrentDay
-          ? StoredDrinkLog(entries: _entries, savedGrams: _savedGrams)
+          ? StoredDrinkLog(
+              entries: _entries,
+              savedGrams: _savedGrams,
+              checkedIn: _checkedIn,
+            )
           : null;
     }
     return preferences.readDay(date);
+  }
+
+  Future<UnderLimitStreak> loadUnderLimitStreak({DateTime? anchor}) async {
+    await _pendingWrite;
+    final target = anchor ?? currentDate;
+    var cursor = DateTime(target.year, target.month, target.day);
+    final todayLog = await loadDay(cursor);
+    final todayCheckedIn = todayLog?.checkedIn ?? false;
+    final todayActive =
+        todayCheckedIn && (todayLog?.totalGrams ?? double.infinity) <= 50;
+
+    if (todayCheckedIn && !todayActive) {
+      return const UnderLimitStreak(days: 0, todayActive: false);
+    }
+    if (!todayCheckedIn) cursor = cursor.subtract(const Duration(days: 1));
+
+    var days = 0;
+    for (var inspected = 0; inspected < 366; inspected++) {
+      final log = await loadDay(cursor);
+      if (log == null || !log.checkedIn || log.totalGrams > 50) break;
+      days++;
+      cursor = cursor.subtract(const Duration(days: 1));
+    }
+    return UnderLimitStreak(days: days, todayActive: todayActive);
   }
 
   Future<WeeklySugarSummary> loadWeeklySummary({DateTime? anchor}) async {
@@ -185,7 +233,12 @@ class DrinkLogController extends ChangeNotifier {
     final savedSnapshot = _savedGrams;
     _pendingWrite = _pendingWrite
         .then(
-          (_) => preferences.write(today, snapshot, savedGrams: savedSnapshot),
+          (_) => preferences.write(
+            today,
+            snapshot,
+            savedGrams: savedSnapshot,
+            checkedIn: _checkedIn,
+          ),
         )
         .onError((_, _) {});
   }

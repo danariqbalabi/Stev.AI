@@ -39,7 +39,7 @@ class RiskAssessmentResult {
   final List<String> topFactors;
   final String? familyMemberId;
 
-  /// Kept in memory for the current flow. It is never persisted.
+  /// Persisted only as part of the local result summary, never with raw answers.
   final int score;
 
   bool get shouldOfferParentInvite => score >= 12;
