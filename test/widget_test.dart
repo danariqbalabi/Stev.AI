@@ -15,8 +15,7 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('scanButton')));
     await tester.pump(const Duration(milliseconds: 500));
-    expect(find.byKey(const ValueKey('scanModesScreen')), findsOneWidget);
-    await tester.tap(find.byKey(const ValueKey('scanMode-photo')));
+    expect(find.byKey(const ValueKey('photoScanScreen')), findsOneWidget);
     // Do not settle indefinitely: the real camera loading state contains an
     // indeterminate progress indicator and requires a platform device.
     await tester.pump(const Duration(seconds: 1));

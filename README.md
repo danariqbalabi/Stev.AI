@@ -42,7 +42,7 @@ Untuk minuman kemasan, angka gula direncanakan berasal dari informasi label atau
 ## Alur demo utama
 
 1. Pengguna membuka Dashboard dan menekan **Scan minuman**.
-2. Pengguna memilih **Foto Minuman**, **Barcode**, atau **Label Gizi**. Foto minuman masuk identifikasi katalog; barcode mencari produk; label gizi dibaca untuk dikonfirmasi sebelum dicatat.
+2. Tombol Scan langsung membuka kamera **Foto Minuman**. Pilihan **Barcode** dan **Label Gizi** tersedia di layar kamera tanpa halaman pemilihan tambahan. Foto minuman masuk identifikasi katalog; barcode mencari produk; label gizi dibaca untuk dikonfirmasi sebelum dicatat.
 3. Aplikasi memberikan tiga kandidat minuman.
 4. Pengguna memilih kandidat dan level gula jika minuman tidak memiliki label kemasan.
 5. Aplikasi menampilkan estimasi gula, visual sendok, dan sisa referensi harian.
@@ -61,7 +61,7 @@ Saat ini repository berisi alur MVP awal yang dapat diklik:
 - State log minuman harian yang menghitung total secara dinamis dan mengganti entri produk yang sama.
 - Aturan Swap terpusat untuk level gula minuman non-kemasan dan alternatif produk kemasan yang tersedia.
 - Kamera Android/Web dengan preview hasil foto.
-- Halaman pemilihan tiga mode scan aktif: Foto Minuman, Barcode, dan Label Gizi. Pencarian manual tetap tersedia.
+- Kamera foto terbuka satu tap dari tombol Scan, dengan pengalih mode Foto, Barcode, dan Label Gizi. Pencarian manual tetap tersedia; kamera lama dilepas sebelum pindah mode.
 - OCR label gizi melalui Gemini di Supabase Edge Function, dengan pembacaan gula terpisah dari karbohidrat dan pembedaan per sajian/per 100 ml/per kemasan.
 - Form konfirmasi OCR dengan foto, bukti teks label, koreksi angka, bagian kemasan yang diminum, perhitungan lokal, serta persetujuan pengguna sebelum masuk log pribadi. Data tidak terbaca tidak dianggap nol; input label manual tersedia saat kamera/OCR gagal.
 - Scanner barcode EAN-8/EAN-13/UPC-A Android/Web, input angka manual, pemeriksaan checksum, serta pencarian Supabase lalu Open Food Facts.

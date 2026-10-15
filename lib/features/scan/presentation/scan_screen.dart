@@ -11,6 +11,7 @@ import '../../recognition/domain/drink_recognition.dart';
 import '../../drinks/application/drink_catalog_controller.dart';
 import '../../nutrition/data/remote_nutrition_label_reader.dart';
 import '../../nutrition/domain/nutrition_label.dart';
+import 'scan_mode_switcher.dart';
 
 class ScanScreen extends StatefulWidget {
   const ScanScreen({
@@ -41,6 +42,8 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
   bool _isRecognizing = false;
   String? _recognitionError;
   int _cameraGeneration = 0;
+  Future<void>? _cameraInitialization;
+  bool _isSwitchingMode = false;
 
   @override
   void initState() {
@@ -61,7 +64,7 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (kIsWeb) return;
+    if (kIsWeb || _isSwitchingMode) return;
     final controller = _cameraController;
     if (state == AppLifecycleState.inactive &&
         controller != null &&
@@ -75,7 +78,11 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _initializeCamera() async {
+  Future<void> _initializeCamera() {
+    return _cameraInitialization = _startCamera();
+  }
+
+  Future<void> _startCamera() async {
     final generation = ++_cameraGeneration;
     if (mounted) {
       setState(() {
@@ -92,6 +99,7 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
     CameraController? pending;
     try {
       final cameras = await availableCameras();
+      if (!mounted || generation != _cameraGeneration) return;
       if (cameras.isEmpty) {
         throw CameraException(
           'NoCameraAvailable',
@@ -147,9 +155,19 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
     if (mounted) setState(() => _isInitializing = false);
     try {
       await controller?.dispose();
+      await _cameraInitialization;
     } catch (_) {
       /* The manual path remains available. */
     }
+  }
+
+  Future<void> _switchMode(ScanMode mode) async {
+    if (_isSwitchingMode || _isCapturing || _isPickingImage || _isRecognizing) {
+      return;
+    }
+    setState(() => _isSwitchingMode = true);
+    await _releaseCamera();
+    if (mounted) context.pushReplacement(mode.route);
   }
 
   String _messageForCameraError(CameraException error) {
@@ -361,6 +379,7 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
     final hasPhoto = _photoBytes != null;
 
     return Scaffold(
+      key: ValueKey(widget.labelMode ? 'labelScanScreen' : 'photoScanScreen'),
       appBar: AppBar(
         title: Text(
           hasPhoto
@@ -390,6 +409,13 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
         ),
         const SizedBox(height: 16),
         Expanded(child: _buildCameraViewport()),
+        const SizedBox(height: 12),
+        ScanModeSwitcher(
+          selected: widget.labelMode ? ScanMode.label : ScanMode.photo,
+          onChanged: _isSwitchingMode || _isCapturing || _isPickingImage
+              ? null
+              : _switchMode,
+        ),
         if (widget.labelMode)
           TextButton(
             key: const ValueKey('manualNutritionLabel'),
@@ -409,18 +435,27 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
                 : const Icon(Icons.camera_alt_outlined),
             label: Text(_isCapturing ? 'Mengambil foto...' : 'Ambil foto'),
           ),
-        TextButton.icon(
-          key: const ValueKey('galleryButton'),
-          onPressed: _isPickingImage ? null : _pickFromGallery,
-          icon: const Icon(Icons.photo_library_outlined),
-          label: Text(
-            _isPickingImage ? 'Membuka galeri...' : 'Pilih dari galeri',
-          ),
-        ),
-        TextButton(
-          key: const ValueKey('manualSearchLink'),
-          onPressed: () => context.push('/manual'),
-          child: const Text('Cari manual'),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Flexible(
+              child: TextButton.icon(
+                key: const ValueKey('galleryButton'),
+                onPressed: _isPickingImage ? null : _pickFromGallery,
+                icon: const Icon(Icons.photo_library_outlined),
+                label: Text(
+                  _isPickingImage ? 'Membuka galeri...' : 'Pilih dari galeri',
+                ),
+              ),
+            ),
+            Flexible(
+              child: TextButton(
+                key: const ValueKey('manualSearchLink'),
+                onPressed: () => context.push('/manual'),
+                child: const Text('Cari manual'),
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -429,13 +464,18 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
   Widget _buildCameraViewport() {
     if (_isInitializing) {
       return const _CameraFrame(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(color: Colors.white),
-            SizedBox(height: 16),
-            Text('Menyiapkan kamera...', style: TextStyle(color: Colors.white)),
-          ],
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: Colors.white),
+              SizedBox(height: 16),
+              Text(
+                'Menyiapkan kamera...',
+                style: TextStyle(color: Colors.white),
+              ),
+            ],
+          ),
         ),
       );
     }

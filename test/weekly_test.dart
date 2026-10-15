@@ -70,9 +70,8 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('Scan minuman'), findsOneWidget);
-    expect(find.byKey(const ValueKey('scanModesScreen')), findsOneWidget);
-    final manual = find.byKey(const ValueKey('scanModesManualSearch'));
-    await tester.scrollUntilVisible(manual, 100);
+    expect(find.byKey(const ValueKey('photoScanScreen')), findsOneWidget);
+    final manual = find.byKey(const ValueKey('manualSearchLink'));
     expect(manual, findsOneWidget);
   });
 
