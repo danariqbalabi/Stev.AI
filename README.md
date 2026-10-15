@@ -57,7 +57,7 @@ Saat ini repository berisi alur MVP awal yang dapat diklik:
 - Komponen dasar reusable: logo, maskot, icon, button, glass card, aura, spoon meter, dan level gula.
 - Onboarding first-launch, profil singkat, dan penyimpanan preferensi lokal.
 - Dashboard final dengan week strip, meter sendok gula, riwayat minuman, dan tab bar.
-- Katalog terpusat berisi 10 minuman dari design handoff beserta foto, kategori, jenis, dan kandungan gulanya.
+- Katalog demo terpusat berisi 50 minuman (25 kemasan) beserta kategori, jenis, kandungan gula, status validasi, dan fallback gambar.
 - State log minuman harian yang menghitung total secara dinamis dan mengganti entri produk yang sama.
 - Aturan Swap terpusat untuk level gula minuman non-kemasan dan alternatif produk kemasan yang tersedia.
 - Kamera Android/Web dengan preview hasil foto.
@@ -76,8 +76,15 @@ Saat ini repository berisi alur MVP awal yang dapat diklik:
 - Confidence hasil recognition diteruskan ke UI; kandidat di bawah 55% ditolak dan pengguna diarahkan untuk memotret ulang atau mencari manual.
 - Fondasi Supabase untuk katalog remote, schema/RLS, seed 10 minuman, gambar remote, dan fallback offline ke katalog lokal.
 - Personalisasi Dashboard dari nama dan waktu beli minuman yang disimpan saat onboarding.
-- Skrining risiko diabetes untuk diri sendiri atau orang tua: delapan pertanyaan, kategori risiko, faktor utama, estimasi minimal untuk jawaban yang tidak diketahui, dan arahan pemeriksaan. Jawaban hanya diproses di memori perangkat dan tidak disimpan.
-- Ajak & Rujukan dengan pesan yang dapat diedit, share sheet sistem, informasi Cek Kesehatan Gratis, dan tanpa memasukkan skor atau jawaban kesehatan ke pesan.
+- Skrining FINDRISC untuk diri sendiri atau orang tua: delapan jawaban wajib, lima level risiko, skor 0-26, faktor utama, dan perkiraan risiko 10 tahun. Jawaban hanya diproses di memori perangkat dan tidak disimpan.
+- Input lingkar pinggang memakai batas berbeda untuk pria dan wanita; kalkulator BMI membulatkan hasil ke satu desimal sebelum menentukan poin.
+- Hasil risiko memberi rekomendasi GDP, HbA1c, dan TTGO sesuai level risiko tanpa mengklaim diagnosis.
+- Kalkulator BMI lokal dari tinggi dan berat badan untuk membantu menjawab skrining tanpa menyimpan ukuran tubuh.
+- Notifikasi Android sungguhan yang dijadwalkan tujuh hari setelah skrining dan dapat dibatalkan dari aplikasi.
+- Tab Keluarga lokal untuk melacak status undangan dan pemeriksaan anggota keluarga tanpa menyimpan jawaban, skor, atau BMI.
+- Empat poster ajakan untuk mode diri sendiri/Ayah-Ibu dan risiko Sedang/Tinggi, dibagikan bersama pesan otomatis berisi level dan skor melalui share sheet sistem.
+- Animasi satu kali dari hasil pencatatan menuju riwayat Dashboard, termasuk meter gula yang ikut berubah dan dukungan reduced motion.
+- Evaluation harness untuk mengukur top-1/top-3, penolakan non-minuman, false positive, error request, dan latency recognition.
 - Navigasi Android dan web.
 
 Edge Function recognition dan katalog cloud sudah tersedia di source code, tetapi function harus di-deploy dan diberi API key AI sebelum recognition nyata aktif. Tanpa konfigurasi endpoint, hasil recognition tetap memakai adapter demo lokal. Aturan Swap saat ini masih merupakan data demo lokal dari design handoff.
@@ -96,7 +103,8 @@ Dokumen handoff dari desain tersedia di `docs/design/`:
 
 Alur validasi sumber gula tersedia di `docs/data/DRINK_VERIFICATION.md`. Cara
 mengukur akurasi dan latency recognition tersedia di
-`docs/data/RECOGNITION_EVALUATION.md`.
+`docs/data/RECOGNITION_EVALUATION.md`. Panduan APK/AAB dan signing tersedia di
+`docs/ANDROID_RELEASE.md`.
 
 Font Onest disimpan lokal agar konsisten pada Android dan web. Lisensi SIL Open Font License tersedia di `assets/fonts/OFL.txt`.
 
@@ -115,12 +123,10 @@ Font Onest disimpan lokal agar konsisten pada Android dan web. Lisensi SIL Open 
 
 ### Roadmap
 
-- Penyesuaian alur Cek Risiko untuk diri sendiri dan orang tua.
-- Kalkulator BMI lokal dari tinggi dan berat badan.
-- Notifikasi lokal pengingat pemeriksaan tujuh hari setelah skrining.
-- Tab Keluarga lokal untuk melacak progres pendampingan tanpa menyimpan data kesehatan.
-- Dataset recognition, evaluasi akurasi, dan rate limiting production.
-- Animasi penghematan gula dan confetti kontekstual.
+- Pengumpulan dataset foto independen dan evaluasi recognition berkala.
+- Rate limiting, abuse protection, dan observability backend production.
+- Validasi sumber kandungan gula oleh tim sebelum data demo dipromosikan menjadi data terverifikasi.
+- Sinkronisasi akun/keluarga lintas perangkat jika kebutuhan produk sudah tervalidasi dan persetujuan privasinya jelas.
 - Dukungan kategori makanan.
 
 ## Teknologi
@@ -255,7 +261,7 @@ Migration mengaktifkan RLS. Client hanya dapat membaca minuman terverifikasi bes
 ## Pemeriksaan kualitas
 
 ```bash
-dart format --output=none --set-exit-if-changed lib test
+dart format --output=none --set-exit-if-changed lib test tool
 flutter analyze
 flutter test
 flutter build web --release

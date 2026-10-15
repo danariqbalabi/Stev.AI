@@ -71,6 +71,7 @@ flutter:
     - assets/brand/
     - assets/drinks/
     - assets/icons/
+    - assets/posters/
 
   fonts:
     - family: Onest

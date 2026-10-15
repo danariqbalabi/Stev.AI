@@ -12,63 +12,38 @@ class RiskResultScreen extends StatelessWidget {
 
   String get _levelLabel => switch (result.level) {
     RiskLevel.low => 'Rendah',
+    RiskLevel.slightlyElevated => 'Sedikit meningkat',
     RiskLevel.medium => 'Sedang',
     RiskLevel.high => 'Tinggi',
+    RiskLevel.veryHigh => 'Sangat tinggi',
   };
 
-  String get _actionTitle => switch (result.level) {
-    RiskLevel.low => 'Tetap rutin cek kesehatan',
-    RiskLevel.medium => 'Sebaiknya cek gula darah dalam waktu dekat',
-    RiskLevel.high => 'Yuk, periksakan ke Puskesmas terdekat',
+  String get _probabilityLabel => switch (result.level) {
+    RiskLevel.low => '1 dari 100 dalam 10 tahun',
+    RiskLevel.slightlyElevated => '1 dari 25 dalam 10 tahun',
+    RiskLevel.medium => '1 dari 6 dalam 10 tahun',
+    RiskLevel.high => '1 dari 3 dalam 10 tahun',
+    RiskLevel.veryHigh => '1 dari 2 dalam 10 tahun',
   };
 
-  String get _actionBody {
-    if (result.level == RiskLevel.low) {
-      return 'Ulangi Cek Risiko dan ikut Cek Kesehatan Gratis secara berkala.';
-    }
-    final subject = result.subject == RiskSubject.parent ? 'Ibu/Bapak' : 'Kamu';
-    return '$subject bisa ikut Cek Kesehatan Gratis dari Kemenkes. Gula darah termasuk yang diperiksa.';
-  }
+  Color get _levelColor => switch (result.level) {
+    RiskLevel.medium => StevColors.sugar,
+    RiskLevel.high || RiskLevel.veryHigh => StevColors.over,
+    RiskLevel.low || RiskLevel.slightlyElevated => StevColors.ink,
+  };
 
-  void _showLocations(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        padding: EdgeInsets.fromLTRB(
-          StevSpace.s5,
-          StevSpace.s6,
-          StevSpace.s5,
-          StevSpace.s6 + MediaQuery.paddingOf(context).bottom,
-        ),
-        decoration: const BoxDecoration(
-          color: StevColors.card,
-          borderRadius: BorderRadius.vertical(
-            top: Radius.circular(StevRadius.sheet),
-          ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Puskesmas terdekat', style: StevType.heading),
-            const SizedBox(height: StevSpace.s2),
-            Text(
-              'Contoh lokasi untuk prototipe',
-              style: StevType.caption.copyWith(color: StevColors.ink2),
-            ),
-            const SizedBox(height: StevSpace.s5),
-            const _LocationRow('Puskesmas Kecamatan Menteng', '1,2 km'),
-            const _LocationRow('Puskesmas Kelurahan Cikini', '2,0 km'),
-            const _LocationRow('Puskesmas Kecamatan Senen', '2,8 km'),
-            const SizedBox(height: StevSpace.s4),
-            StevButton(label: 'Tutup', onPressed: () => context.pop()),
-          ],
-        ),
-      ),
-    );
-  }
+  String get _recommendation => switch (result.level) {
+    RiskLevel.low => 'Belum perlu tes khusus. Pertahankan kebiasaan sehat dan lakukan cek ulang risiko secara berkala.',
+    RiskLevel.slightlyElevated => 'Tes gula darah bersifat opsional, terutama bila ada anggota keluarga dengan diabetes.',
+    RiskLevel.medium => 'Disarankan melakukan tes gula darah.',
+    RiskLevel.high || RiskLevel.veryHigh =>
+      'Segera lakukan tes gula darah dan konsultasi ke dokter.',
+  };
+
+  bool get _showTests => switch (result.level) {
+    RiskLevel.medium || RiskLevel.high || RiskLevel.veryHigh => true,
+    RiskLevel.low || RiskLevel.slightlyElevated => false,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -85,7 +60,7 @@ class RiskResultScreen extends StatelessWidget {
             ),
             children: [
               Text(
-                'Hasil Risiko',
+                'Hasil cek risiko',
                 textAlign: TextAlign.center,
                 style: StevType.heading,
               ),
@@ -100,38 +75,42 @@ class RiskResultScreen extends StatelessWidget {
               ),
               const SizedBox(height: StevSpace.s5),
               Center(
-                child: Wrap(
-                  alignment: WrapAlignment.center,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: StevSpace.s3,
-                  runSpacing: StevSpace.s2,
-                  children: [
-                    Container(
-                      key: const ValueKey('riskLevelPill'),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: StevSpace.s5,
-                        vertical: StevSpace.s3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: StevColors.ink,
-                        borderRadius: BorderRadius.circular(StevRadius.pill),
-                      ),
-                      child: Text(
-                        _levelLabel,
-                        style: StevType.label.copyWith(color: StevColors.onInk),
-                      ),
-                    ),
-                    if (result.isMinimumEstimate) ...[
-                      Text(
-                        'Estimasi minimal',
-                        key: const ValueKey('minimumEstimateLabel'),
-                        style: StevType.caption.copyWith(
-                          color: StevColors.ink2,
-                        ),
-                      ),
-                    ],
-                  ],
+                child: Container(
+                  key: const ValueKey('riskLevelPill'),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: StevSpace.s5,
+                    vertical: StevSpace.s3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _levelColor,
+                    borderRadius: BorderRadius.circular(StevRadius.pill),
+                  ),
+                  child: Text(
+                    'Risiko $_levelLabel',
+                    style: StevType.label.copyWith(color: StevColors.onInk),
+                  ),
                 ),
+              ),
+              const SizedBox(height: StevSpace.s4),
+              Semantics(
+                label: 'Skor FINDRISC ${result.score} dari 26',
+                child: Text(
+                  '${result.score}',
+                  key: const ValueKey('riskScore'),
+                  textAlign: TextAlign.center,
+                  style: StevType.number,
+                ),
+              ),
+              Text(
+                'Skor FINDRISC dari 26',
+                textAlign: TextAlign.center,
+                style: StevType.caption.copyWith(color: StevColors.ink2),
+              ),
+              const SizedBox(height: StevSpace.s2),
+              Text(
+                'Perkiraan risiko: $_probabilityLabel',
+                textAlign: TextAlign.center,
+                style: StevType.body,
               ),
               const SizedBox(height: StevSpace.s7),
               GlassCard(
@@ -169,32 +148,56 @@ class RiskResultScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(_actionTitle, style: StevType.heading),
+                    Text('Tes yang bisa kamu ambil', style: StevType.heading),
                     const SizedBox(height: StevSpace.s2),
                     Text(
-                      _actionBody,
+                      _recommendation,
                       style: StevType.body.copyWith(color: StevColors.ink2),
                     ),
-                    const SizedBox(height: StevSpace.s5),
-                    StevButton(
-                      label: 'Cari Puskesmas terdekat',
-                      variant: StevButtonVariant.leaf,
-                      onPressed: () => _showLocations(context),
-                    ),
+                    if (_showTests) ...[
+                      const SizedBox(height: StevSpace.s5),
+                      const _TestCard(
+                        name: 'GDP (Gula Darah Puasa)',
+                        measures: 'Kadar gula darah setelah puasa',
+                        preparation:
+                            'Puasa minimal 8 jam; air putih diperbolehkan',
+                        note: 'Paling umum dan terjangkau; tersedia di banyak Puskesmas',
+                      ),
+                      const _TestCard(
+                        name: 'HbA1c',
+                        measures: 'Rata-rata kadar gula darah sekitar 3 bulan terakhir',
+                        preparation: 'Tidak perlu puasa',
+                        note: 'Biaya lebih tinggi; belum tersedia di semua Puskesmas',
+                      ),
+                      const _TestCard(
+                        name: 'TTGO (Tes Toleransi Glukosa Oral)',
+                        measures: 'Kadar gula darah 2 jam setelah minum larutan glukosa',
+                        preparation:
+                            'Puasa, lalu menunggu 2 jam di laboratorium',
+                        note: 'Umumnya dilakukan atas permintaan dokter',
+                      ),
+                      const SizedBox(height: StevSpace.s3),
+                      Text(
+                        'Tes tersedia di Puskesmas, klinik, atau laboratorium. Tanyakan ketersediaan dan persiapannya kepada fasilitas kesehatan.',
+                        style: StevType.caption.copyWith(
+                          color: StevColors.ink2,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
               const SizedBox(height: StevSpace.s5),
               Text(
-                'Ini skrining, bukan diagnosis. Hanya tenaga kesehatan yang bisa memastikan lewat pemeriksaan.',
+                'Hasil ini merupakan skrining risiko, bukan diagnosis. Konsultasikan hasil pemeriksaan kepada tenaga kesehatan.',
                 textAlign: TextAlign.center,
                 style: StevType.caption.copyWith(color: StevColors.ink2),
               ),
               const SizedBox(height: StevSpace.s5),
-              if (result.subject == RiskSubject.parent) ...[
+              if (result.shouldOfferParentInvite) ...[
                 StevButton(
                   key: const ValueKey('openRiskInvite'),
-                  label: 'Ajak Ibu/Bapak periksa',
+                  label: 'Ajak Ayah/Ibu cek',
                   variant: StevButtonVariant.leaf,
                   onPressed: () => context.push('/risk/invite', extra: result),
                 ),
@@ -213,26 +216,64 @@ class RiskResultScreen extends StatelessWidget {
   }
 }
 
-class _LocationRow extends StatelessWidget {
-  const _LocationRow(this.name, this.distance);
+class _TestCard extends StatelessWidget {
+  const _TestCard({
+    required this.name,
+    required this.measures,
+    required this.preparation,
+    required this.note,
+  });
 
   final String name;
-  final String distance;
+  final String measures;
+  final String preparation;
+  final String note;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: StevSpace.s3),
+      padding: const EdgeInsets.all(StevSpace.s4),
+      decoration: BoxDecoration(
+        color: StevColors.card,
+        borderRadius: BorderRadius.circular(StevRadius.small),
+        border: Border.all(color: StevColors.pressCardEdge),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(name, style: StevType.label),
+          const SizedBox(height: StevSpace.s2),
+          _TestDetail(label: 'Yang diukur', value: measures),
+          _TestDetail(label: 'Persiapan', value: preparation),
+          _TestDetail(label: 'Catatan', value: note),
+        ],
+      ),
+    );
+  }
+}
+
+class _TestDetail extends StatelessWidget {
+  const _TestDetail({required this.label, required this.value});
+
+  final String label;
+  final String value;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: StevSpace.s3),
-      child: Row(
-        children: [
-          const Icon(Icons.local_hospital_outlined),
-          const SizedBox(width: StevSpace.s3),
-          Expanded(child: Text(name, style: StevType.body)),
-          Text(
-            distance,
-            style: StevType.caption.copyWith(color: StevColors.ink2),
-          ),
-        ],
+      padding: const EdgeInsets.only(top: StevSpace.s1),
+      child: Text.rich(
+        TextSpan(
+          style: StevType.caption.copyWith(color: StevColors.ink2),
+          children: [
+            TextSpan(
+              text: '$label: ',
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            TextSpan(text: value),
+          ],
+        ),
       ),
     );
   }

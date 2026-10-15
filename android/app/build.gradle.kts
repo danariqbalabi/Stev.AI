@@ -1,7 +1,24 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+val releasePropertiesFile = rootProject.file("key.properties")
+val releaseProperties = Properties()
+val hasReleaseSigning = releasePropertiesFile.exists().also { exists ->
+    if (exists) {
+        releasePropertiesFile.inputStream().use(releaseProperties::load)
+        val requiredKeys = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
+        val missingKeys = requiredKeys.filter { releaseProperties.getProperty(it).isNullOrBlank() }
+        if (missingKeys.isNotEmpty()) {
+            throw GradleException(
+                "android/key.properties is missing: ${missingKeys.joinToString()}",
+            )
+        }
+    }
 }
 
 android {
@@ -27,11 +44,26 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = rootProject.file(releaseProperties.getProperty("storeFile"))
+                storePassword = releaseProperties.getProperty("storePassword")
+                keyAlias = releaseProperties.getProperty("keyAlias")
+                keyPassword = releaseProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // Without key.properties Gradle intentionally creates an unsigned
+            // release artifact. Debug keys must never sign a distributed build.
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }

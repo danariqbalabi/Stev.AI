@@ -20,8 +20,9 @@ abstract final class BmiCalculator {
     }
 
     final heightMeters = height / 100;
-    final bmi = weight / (heightMeters * heightMeters);
-    return BmiCalculation(value: bmi, category: categoryFor(bmi));
+    final rawBmi = weight / (heightMeters * heightMeters);
+    final roundedBmi = double.parse(rawBmi.toStringAsFixed(1));
+    return BmiCalculation(value: roundedBmi, category: categoryFor(roundedBmi));
   }
 
   static BmiCategory categoryFor(double bmi) {

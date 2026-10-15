@@ -111,8 +111,14 @@ GoRouter createAppRouter({required bool onboardingComplete}) {
           return _fadePage(
             state: state,
             child: RiskInviteScreen(
-              subject: result?.subject ?? RiskSubject.parent,
-              familyMemberId: result?.familyMemberId,
+              result:
+                  result ??
+                  const RiskAssessmentResult(
+                    subject: RiskSubject.parent,
+                    level: RiskLevel.medium,
+                    topFactors: [],
+                    score: 12,
+                  ),
             ),
           );
         },

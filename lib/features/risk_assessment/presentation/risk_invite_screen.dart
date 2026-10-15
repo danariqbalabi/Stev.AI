@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
@@ -9,27 +10,47 @@ import '../../family/domain/family_member.dart';
 import '../data/risk_reminder_scheduler.dart';
 import '../domain/risk_assessment.dart';
 
+class RiskSharePayload {
+  const RiskSharePayload({required this.message, required this.posterAsset});
+
+  final String message;
+  final String posterAsset;
+}
+
 typedef RiskMessageSharer = Future<void> Function(
-  String message,
+  RiskSharePayload payload,
   Rect? sharePositionOrigin,
 );
 
 class RiskInviteScreen extends StatefulWidget {
   const RiskInviteScreen({
     super.key,
-    required this.subject,
+    required this.result,
     this.shareMessage,
     this.reminderScheduler,
-    this.familyMemberId,
   });
 
-  static const defaultMessage =
-      'Bu/Pak, aku habis cek risiko diabetes lewat Stev.AI. Yuk kita cek gula darah gratis di Puskesmas.';
-
-  final RiskSubject subject;
+  final RiskAssessmentResult result;
   final RiskMessageSharer? shareMessage;
   final RiskReminderScheduler? reminderScheduler;
-  final String? familyMemberId;
+
+  String get levelLabel => switch (result.level) {
+    RiskLevel.low => 'Rendah',
+    RiskLevel.slightlyElevated => 'Sedikit meningkat',
+    RiskLevel.medium => 'Sedang',
+    RiskLevel.high => 'Tinggi',
+    RiskLevel.veryHigh => 'Sangat tinggi',
+  };
+
+  String get defaultMessage => result.subject == RiskSubject.self
+      ? 'Ayah/Ibu, aku baru cek risiko diabetes di Stev.AI, hasilku $levelLabel (skor ${result.score}). Diabetes bisa menurun di keluarga, yuk cek gula darah bareng minggu ini.'
+      : 'Ayah/Ibu, aku isiin cek risiko diabetes buat Ayah/Ibu di Stev.AI, hasilnya $levelLabel (skor ${result.score}). Ini masih perkiraan, yuk pastikan dengan tes gula darah. Aku temenin.';
+
+  String get posterAsset {
+    final subject = result.subject == RiskSubject.self ? 'diri' : 'ortu';
+    final band = result.level == RiskLevel.medium ? 'sedang' : 'tinggi';
+    return 'assets/posters/poster_${subject}_$band.jpeg';
+  }
 
   @override
   State<RiskInviteScreen> createState() => _RiskInviteScreenState();
@@ -47,9 +68,7 @@ class _RiskInviteScreenState extends State<RiskInviteScreen> {
   @override
   void initState() {
     super.initState();
-    _messageController = TextEditingController(
-      text: RiskInviteScreen.defaultMessage,
-    );
+    _messageController = TextEditingController(text: widget.defaultMessage);
   }
 
   @override
@@ -70,15 +89,30 @@ class _RiskInviteScreenState extends State<RiskInviteScreen> {
 
     try {
       final customShare = widget.shareMessage;
+      final payload = RiskSharePayload(
+        message: message,
+        posterAsset: widget.posterAsset,
+      );
       if (customShare != null) {
-        await customShare(message, origin);
+        await customShare(payload, origin);
       } else {
+        final data = await rootBundle.load(widget.posterAsset);
         await SharePlus.instance.share(
-          ShareParams(text: message, sharePositionOrigin: origin),
+          ShareParams(
+            text: message,
+            files: [
+              XFile.fromData(
+                data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
+                mimeType: 'image/jpeg',
+                name: widget.posterAsset.split('/').last,
+              ),
+            ],
+            sharePositionOrigin: origin,
+          ),
         );
       }
       if (!mounted) return;
-      if (widget.familyMemberId case final memberId?) {
+      if (widget.result.familyMemberId case final memberId?) {
         await FamilyScope.read(context)
             .updateStatus(memberId, FamilyProgressStatus.invited);
       }
@@ -177,6 +211,20 @@ class _RiskInviteScreenState extends State<RiskInviteScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(
+                              StevRadius.small,
+                            ),
+                            child: AspectRatio(
+                              aspectRatio: 4 / 5,
+                              child: Image.asset(
+                                widget.posterAsset,
+                                key: const ValueKey('riskPosterPreview'),
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: StevSpace.s4),
                           Text('Pesan buat Ibu/Bapak', style: StevType.heading),
                           const SizedBox(height: StevSpace.s4),
                           TextField(
@@ -204,7 +252,7 @@ class _RiskInviteScreenState extends State<RiskInviteScreen> {
                               key: const ValueKey('shareRiskMessage'),
                               label: _sharing
                                   ? 'Membuka pilihan...'
-                                  : 'Bagikan ke WhatsApp',
+                                  : 'Bagikan poster',
                               variant: StevButtonVariant.leaf,
                               onPressed: _sharing
                                   ? null
