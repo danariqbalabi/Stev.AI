@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -7,6 +5,7 @@ import '../../../core/theme/stev_tokens.dart';
 import '../../../shared/widgets/stev_design_system.dart';
 import '../../family/application/family_controller.dart';
 import '../../family/domain/family_member.dart';
+import '../data/risk_history_preferences.dart';
 import '../domain/bmi_calculator.dart';
 import '../domain/risk_assessment.dart';
 import '../domain/waist_calculator.dart';
@@ -31,6 +30,9 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
   final _weightController = TextEditingController();
   final _waistController = TextEditingController();
   WaistSex? _waistSex;
+  bool _useBmiCalculator = false;
+  bool _useWaistCalculator = false;
+  bool _savingResult = false;
 
   @override
   void initState() {
@@ -63,7 +65,8 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
     });
   }
 
-  void _answer(RiskOption option) {
+  Future<void> _answer(RiskOption option) async {
+    if (_savingResult) return;
     _answers[_questionIndex] = option;
     if (_questionIndex < RiskAssessment.questions.length - 1) {
       setState(() => _questionIndex++);
@@ -75,13 +78,18 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
       answers: _answers.whereType<RiskOption>().toList(),
       familyMemberId: widget.familyMemberId,
     );
+    final familyController = widget.familyMemberId == null
+        ? null
+        : FamilyScope.read(context);
+    setState(() => _savingResult = true);
+    await RiskHistoryPreferences().add(result);
     if (widget.familyMemberId case final memberId?) {
-      unawaited(
-        FamilyScope.read(context)
-            .updateStatus(memberId, FamilyProgressStatus.assessed),
+      await familyController?.updateStatus(
+        memberId,
+        FamilyProgressStatus.assessed,
       );
     }
-    context.pushReplacement('/risk/result', extra: result);
+    if (mounted) context.pushReplacement('/risk/result', extra: result);
   }
 
   BmiCalculation? get _bmiCalculation => BmiCalculator.calculate(
@@ -167,6 +175,10 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
                           heightController: _heightController,
                           weightController: _weightController,
                           calculation: _bmiCalculation,
+                          useCalculator: _useBmiCalculator,
+                          onUseCalculatorChanged: (value) =>
+                              setState(() => _useBmiCalculator = value),
+                          onOptionSelected: _answer,
                           onChanged: () => setState(() {}),
                           onContinue: _answerBmi,
                         )
@@ -177,6 +189,10 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
                           controller: _waistController,
                           selectedSex: _waistSex,
                           calculation: _waistCalculation,
+                          useCalculator: _useWaistCalculator,
+                          onUseCalculatorChanged: (value) =>
+                              setState(() => _useWaistCalculator = value),
+                          onOptionSelected: _answer,
                           onSexChanged: (sex) =>
                               setState(() => _waistSex = sex),
                           onChanged: () => setState(() {}),
@@ -206,6 +222,9 @@ class _BmiQuestionStep extends StatelessWidget {
     required this.heightController,
     required this.weightController,
     required this.calculation,
+    required this.useCalculator,
+    required this.onUseCalculatorChanged,
+    required this.onOptionSelected,
     required this.onChanged,
     required this.onContinue,
   });
@@ -214,6 +233,9 @@ class _BmiQuestionStep extends StatelessWidget {
   final TextEditingController heightController;
   final TextEditingController weightController;
   final BmiCalculation? calculation;
+  final bool useCalculator;
+  final ValueChanged<bool> onUseCalculatorChanged;
+  final ValueChanged<RiskOption> onOptionSelected;
   final VoidCallback onChanged;
   final VoidCallback onContinue;
 
@@ -259,66 +281,89 @@ class _BmiQuestionStep extends StatelessWidget {
         Text(question.textFor(subject), style: StevType.title),
         const SizedBox(height: StevSpace.s2),
         Text(
-          'Masukkan tinggi dan berat untuk menghitung kategorinya di perangkat ini.',
+          'Pilih kategori BMI. Kalau belum tahu, hitung dari tinggi dan berat.',
           style: StevType.body.copyWith(color: StevColors.ink2),
         ),
         const SizedBox(height: StevSpace.s5),
-        Row(
-          children: [
-            Expanded(
-              child: _MeasurementField(
-                key: const ValueKey('bmiHeightField'),
-                controller: heightController,
-                label: subject == RiskSubject.parent
-                    ? 'Tinggi badan Ayah/Ibu'
-                    : 'Tinggi badan',
-                suffix: 'cm',
-                onChanged: onChanged,
-              ),
+        for (final option in question.options) ...[
+          _ChoiceCard(
+            label: option.label,
+            onTap: () => onOptionSelected(option),
+          ),
+          const SizedBox(height: StevSpace.s3),
+        ],
+        Material(
+          color: Colors.transparent,
+          child: SwitchListTile.adaptive(
+            key: const ValueKey('bmiCalculatorToggle'),
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Hitung BMI dari tinggi & berat'),
+            subtitle: const Text(
+              'Opsional dan hanya dihitung di perangkat ini.',
             ),
-            const SizedBox(width: StevSpace.s3),
-            Expanded(
-              child: _MeasurementField(
-                key: const ValueKey('bmiWeightField'),
-                controller: weightController,
-                label: subject == RiskSubject.parent
-                    ? 'Berat badan Ayah/Ibu'
-                    : 'Berat badan',
-                suffix: 'kg',
-                onChanged: onChanged,
-              ),
-            ),
-          ],
+            value: useCalculator,
+            onChanged: onUseCalculatorChanged,
+          ),
         ),
-        const SizedBox(height: StevSpace.s5),
-        GlassCard(
-          child: calculation == null
-              ? Text(
-                  'Isi tinggi 80–250 cm dan berat 20–400 kg.',
-                  style: StevType.body.copyWith(color: StevColors.ink2),
-                )
-              : Column(
-                  children: [
-                    Text(
-                      'BMI ${calculation!.value.toStringAsFixed(1)}',
-                      style: StevType.heading,
-                    ),
-                    const SizedBox(height: StevSpace.s1),
-                    Text(
-                      'Kategori $_categoryLabel',
-                      key: const ValueKey('bmiCategory'),
-                      style: StevType.body.copyWith(color: StevColors.ink2),
-                    ),
-                  ],
+        if (useCalculator) ...[
+          const SizedBox(height: StevSpace.s3),
+          Row(
+            children: [
+              Expanded(
+                child: _MeasurementField(
+                  key: const ValueKey('bmiHeightField'),
+                  controller: heightController,
+                  label: subject == RiskSubject.parent
+                      ? 'Tinggi badan Ayah/Ibu'
+                      : 'Tinggi badan',
+                  suffix: 'cm',
+                  onChanged: onChanged,
                 ),
-        ),
-        const SizedBox(height: StevSpace.s5),
-        StevButton(
-          key: const ValueKey('bmiContinue'),
-          label: 'Lanjut',
-          variant: StevButtonVariant.leaf,
-          onPressed: calculation == null ? null : onContinue,
-        ),
+              ),
+              const SizedBox(width: StevSpace.s3),
+              Expanded(
+                child: _MeasurementField(
+                  key: const ValueKey('bmiWeightField'),
+                  controller: weightController,
+                  label: subject == RiskSubject.parent
+                      ? 'Berat badan Ayah/Ibu'
+                      : 'Berat badan',
+                  suffix: 'kg',
+                  onChanged: onChanged,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: StevSpace.s5),
+          GlassCard(
+            child: calculation == null
+                ? Text(
+                    'Isi tinggi 80–250 cm dan berat 20–400 kg.',
+                    style: StevType.body.copyWith(color: StevColors.ink2),
+                  )
+                : Column(
+                    children: [
+                      Text(
+                        'BMI ${calculation!.value.toStringAsFixed(1)}',
+                        style: StevType.heading,
+                      ),
+                      const SizedBox(height: StevSpace.s1),
+                      Text(
+                        'Kategori $_categoryLabel',
+                        key: const ValueKey('bmiCategory'),
+                        style: StevType.body.copyWith(color: StevColors.ink2),
+                      ),
+                    ],
+                  ),
+          ),
+          const SizedBox(height: StevSpace.s5),
+          StevButton(
+            key: const ValueKey('bmiContinue'),
+            label: 'Gunakan hasil BMI',
+            variant: StevButtonVariant.leaf,
+            onPressed: calculation == null ? null : onContinue,
+          ),
+        ],
         if (subject == RiskSubject.parent) ...[
           const SizedBox(height: StevSpace.s3),
           Text(
@@ -339,6 +384,9 @@ class _WaistQuestionStep extends StatelessWidget {
     required this.controller,
     required this.selectedSex,
     required this.calculation,
+    required this.useCalculator,
+    required this.onUseCalculatorChanged,
+    required this.onOptionSelected,
     required this.onSexChanged,
     required this.onChanged,
     required this.onContinue,
@@ -348,6 +396,9 @@ class _WaistQuestionStep extends StatelessWidget {
   final TextEditingController controller;
   final WaistSex? selectedSex;
   final WaistCalculation? calculation;
+  final bool useCalculator;
+  final ValueChanged<bool> onUseCalculatorChanged;
+  final ValueChanged<RiskOption> onOptionSelected;
   final ValueChanged<WaistSex> onSexChanged;
   final VoidCallback onChanged;
   final VoidCallback onContinue;
@@ -396,50 +447,73 @@ class _WaistQuestionStep extends StatelessWidget {
         ),
         const SizedBox(height: StevSpace.s2),
         Text(
-          'Ukur dengan meteran jahit sejajar pusar.',
+          'Pilih kategorinya. Kalau belum tahu, gunakan pengukuran manual.',
           style: StevType.body.copyWith(color: StevColors.ink2),
         ),
         const SizedBox(height: StevSpace.s5),
-        SegmentedButton<WaistSex>(
-          key: const ValueKey('waistSexSelector'),
-          segments: const [
-            ButtonSegment(value: WaistSex.male, label: Text('Pria')),
-            ButtonSegment(value: WaistSex.female, label: Text('Wanita')),
-          ],
-          selected: selectedSex == null ? const {} : {selectedSex!},
-          emptySelectionAllowed: true,
-          onSelectionChanged: (selection) {
-            if (selection.isNotEmpty) onSexChanged(selection.first);
-          },
-        ),
-        const SizedBox(height: StevSpace.s4),
-        _MeasurementField(
-          key: const ValueKey('waistField'),
-          controller: controller,
-          label: subject == RiskSubject.parent
-              ? 'Lingkar pinggang Ayah/Ibu'
-              : 'Lingkar pinggang',
-          suffix: 'cm',
-          onChanged: onChanged,
-        ),
-        if (calculation != null) ...[
-          const SizedBox(height: StevSpace.s4),
-          GlassCard(
-            child: Text(
-              'Kategori $_categoryLabel',
-              key: const ValueKey('waistCategory'),
-              textAlign: TextAlign.center,
-              style: StevType.heading,
+        for (final option in RiskAssessment.questions[2].options) ...[
+          _ChoiceCard(
+            label: option.label,
+            onTap: () => onOptionSelected(option),
+          ),
+          const SizedBox(height: StevSpace.s3),
+        ],
+        Material(
+          color: Colors.transparent,
+          child: SwitchListTile.adaptive(
+            key: const ValueKey('waistCalculatorToggle'),
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Hitung dari lingkar pinggang'),
+            subtitle: const Text(
+              'Opsional, ukur sejajar pusar dengan meteran.',
             ),
+            value: useCalculator,
+            onChanged: onUseCalculatorChanged,
+          ),
+        ),
+        if (useCalculator) ...[
+          const SizedBox(height: StevSpace.s4),
+          SegmentedButton<WaistSex>(
+            key: const ValueKey('waistSexSelector'),
+            segments: const [
+              ButtonSegment(value: WaistSex.male, label: Text('Pria')),
+              ButtonSegment(value: WaistSex.female, label: Text('Wanita')),
+            ],
+            selected: selectedSex == null ? const {} : {selectedSex!},
+            emptySelectionAllowed: true,
+            onSelectionChanged: (selection) {
+              if (selection.isNotEmpty) onSexChanged(selection.first);
+            },
+          ),
+          const SizedBox(height: StevSpace.s4),
+          _MeasurementField(
+            key: const ValueKey('waistField'),
+            controller: controller,
+            label: subject == RiskSubject.parent
+                ? 'Lingkar pinggang Ayah/Ibu'
+                : 'Lingkar pinggang',
+            suffix: 'cm',
+            onChanged: onChanged,
+          ),
+          if (calculation != null) ...[
+            const SizedBox(height: StevSpace.s4),
+            GlassCard(
+              child: Text(
+                'Kategori $_categoryLabel',
+                key: const ValueKey('waistCategory'),
+                textAlign: TextAlign.center,
+                style: StevType.heading,
+              ),
+            ),
+          ],
+          const SizedBox(height: StevSpace.s5),
+          StevButton(
+            key: const ValueKey('waistContinue'),
+            label: 'Gunakan hasil pengukuran',
+            variant: StevButtonVariant.leaf,
+            onPressed: calculation == null ? null : onContinue,
           ),
         ],
-        const SizedBox(height: StevSpace.s5),
-        StevButton(
-          key: const ValueKey('waistContinue'),
-          label: 'Lanjut',
-          variant: StevButtonVariant.leaf,
-          onPressed: calculation == null ? null : onContinue,
-        ),
         if (subject == RiskSubject.parent) ...[
           const SizedBox(height: StevSpace.s3),
           Text(

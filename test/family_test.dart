@@ -72,14 +72,22 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('riskOption-<45')));
     await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('bmiCalculatorToggle')));
+    await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const ValueKey('bmiHeightField')), '160');
     await tester.enterText(find.byKey(const ValueKey('bmiWeightField')), '55');
     await tester.pump();
+    await tester.drag(find.byType(ListView).last, const Offset(0, -500));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('bmiContinue')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('waistCalculatorToggle')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Wanita'));
     await tester.enterText(find.byKey(const ValueKey('waistField')), '70');
     await tester.pump();
+    await tester.drag(find.byType(ListView).last, const Offset(0, -500));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('waistContinue')));
     await tester.pumpAndSettle();
     for (final label in ['Ya', 'Ya', 'Tidak', 'Tidak', 'Tidak']) {

@@ -5,6 +5,7 @@ import 'package:steviai/app/app.dart';
 import 'package:steviai/app/router.dart';
 import 'package:steviai/core/theme/stev_tokens.dart';
 import 'package:steviai/features/risk_assessment/data/risk_reminder_scheduler.dart';
+import 'package:steviai/features/risk_assessment/data/risk_history_preferences.dart';
 import 'package:steviai/features/risk_assessment/domain/bmi_calculator.dart';
 import 'package:steviai/features/risk_assessment/domain/risk_assessment.dart';
 import 'package:steviai/features/risk_assessment/domain/waist_calculator.dart';
@@ -106,6 +107,26 @@ void main() {
     });
   });
 
+  test('risk history stores only a reusable local result summary', () async {
+    SharedPreferences.setMockInitialValues({});
+    final storage = RiskHistoryPreferences();
+    const result = RiskAssessmentResult(
+      subject: RiskSubject.self,
+      level: RiskLevel.medium,
+      topFactors: ['Riwayat keluarga inti'],
+      score: 12,
+    );
+
+    await storage.add(result, checkedAt: DateTime(2026, 10, 15, 9, 30));
+    final history = await storage.read();
+
+    expect(history, hasLength(1));
+    expect(history.single.level, RiskLevel.medium);
+    expect(history.single.score, 12);
+    expect(history.single.topFactors, ['Riwayat keluarga inti']);
+    expect(history.single.toResult().subject, RiskSubject.self);
+  });
+
   testWidgets('uses reduced transition duration when motion is disabled', (
     tester,
   ) async {
@@ -143,15 +164,25 @@ void main() {
     expect(find.text('Tidak tahu'), findsNothing);
     await tester.tap(find.byKey(const ValueKey('riskOption-<45')));
     await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('bmiHeightField')), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('bmiCalculatorToggle')));
+    await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const ValueKey('bmiHeightField')), '170');
     await tester.enterText(find.byKey(const ValueKey('bmiWeightField')), '60');
     await tester.pump();
+    await tester.drag(find.byType(ListView).last, const Offset(0, -500));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('bmiContinue')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('waistField')), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('waistCalculatorToggle')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Pria'));
     await tester.enterText(find.byKey(const ValueKey('waistField')), '90');
     await tester.pump();
     expect(find.text('Kategori Di bawah batas'), findsOneWidget);
+    await tester.drag(find.byType(ListView).last, const Offset(0, -500));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('waistContinue')));
     await tester.pumpAndSettle();
     for (final label in ['Ya', 'Ya', 'Tidak', 'Tidak', 'Tidak']) {
