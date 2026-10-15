@@ -9,6 +9,7 @@ import 'features/drinks/application/drink_catalog_controller.dart';
 import 'features/drinks/application/drink_log_controller.dart';
 import 'features/home_widget/application/home_widget_bridge.dart';
 import 'features/onboarding/data/onboarding_preferences.dart';
+import 'features/risk_assessment/data/risk_reminder_scheduler.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,6 +21,9 @@ Future<void> main() async {
   final onboardingComplete = await OnboardingPreferences.isComplete();
   final drinkLogController = await DrinkLogController.persistent();
   final router = createAppRouter(onboardingComplete: onboardingComplete);
+  await LocalRiskReminderScheduler.instance.initialize(
+    onOpenRisk: () => router.go('/risk'),
+  );
   await HomeWidgetBridge.initialize(router);
   await HomeWidgetBridge.update();
   drinkLogController.addListener(() async {

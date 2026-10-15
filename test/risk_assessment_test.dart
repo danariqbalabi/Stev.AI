@@ -5,6 +5,7 @@ import 'package:steviai/app/app.dart';
 import 'package:steviai/app/router.dart';
 import 'package:steviai/core/theme/stev_tokens.dart';
 import 'package:steviai/features/risk_assessment/domain/bmi_calculator.dart';
+import 'package:steviai/features/risk_assessment/data/risk_reminder_scheduler.dart';
 import 'package:steviai/features/risk_assessment/domain/risk_assessment.dart';
 import 'package:steviai/features/risk_assessment/presentation/risk_assessment_screen.dart';
 import 'package:steviai/features/risk_assessment/presentation/risk_invite_screen.dart';
@@ -289,4 +290,47 @@ void main() {
     expect(sharedMessage, isNot(contains('19')));
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('schedules and cancels the seven day reminder', (tester) async {
+    final scheduler = _FakeRiskReminderScheduler();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: RiskInviteScreen(
+          subject: RiskSubject.parent,
+          reminderScheduler: scheduler,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.byType(ListView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+    final reminderSwitch = find.byKey(const ValueKey('riskReminderSwitch'));
+    await tester.ensureVisible(reminderSwitch);
+    await tester.tap(reminderSwitch);
+    await tester.pumpAndSettle();
+    expect(scheduler.scheduleCalls, 1);
+    expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue);
+
+    await tester.tap(reminderSwitch);
+    await tester.pumpAndSettle();
+    expect(scheduler.cancelCalls, 1);
+    expect(tester.widget<Switch>(find.byType(Switch)).value, isFalse);
+  });
+}
+
+class _FakeRiskReminderScheduler implements RiskReminderScheduler {
+  var scheduleCalls = 0;
+  var cancelCalls = 0;
+
+  @override
+  Future<RiskReminderScheduleStatus> scheduleSevenDayReminder() async {
+    scheduleCalls++;
+    return RiskReminderScheduleStatus.scheduled;
+  }
+
+  @override
+  Future<void> cancelReminder() async {
+    cancelCalls++;
+  }
 }
