@@ -11,6 +11,7 @@ import '../../family/application/family_controller.dart';
 import '../../onboarding/data/onboarding_preferences.dart';
 import '../../risk_assessment/data/risk_history_preferences.dart';
 import '../../risk_assessment/domain/risk_assessment.dart';
+import '../../sync/application/cloud_sync_controller.dart';
 import '../data/local_data_preferences.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -97,6 +98,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (mounted) await _loadProfile();
   }
 
+  Future<void> _signOut() async {
+    final synced = await CloudSyncScope.read(context).syncNow();
+    if (!synced || !mounted) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Data belum berhasil disinkronkan. Coba keluar lagi nanti.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
+    final signedOut = await AuthScope.read(context).signOut();
+    if (!signedOut || !mounted) return;
+    await DrinkLogScope.read(context).resetLocalState();
+    if (!mounted) return;
+    FamilyScope.read(context).resetLocalState();
+    await LocalDataPreferences.resetAll();
+    if (mounted) context.go('/onboarding');
+  }
+
   Future<void> _resetLocalData() async {
     final confirmed = await _confirm(
       title: 'Reset data aplikasi?',
@@ -106,6 +130,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
     if (!confirmed || !mounted) return;
 
+    final cloudDeleted = await CloudSyncScope.read(context).deleteCloudData();
+    if (!cloudDeleted || !mounted) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Data cloud belum terhapus. Coba reset lagi.'),
+          ),
+        );
+      }
+      return;
+    }
     await AuthScope.read(context).signOut(localOnly: true);
     if (!mounted) return;
     await DrinkLogScope.read(context).resetLocalState();
@@ -115,9 +150,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (mounted) context.go('/onboarding');
   }
 
+  Future<void> _syncNow() async {
+    final success = await CloudSyncScope.read(context).syncNow();
+    if (!mounted) return;
+    await _loadProfile();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? 'Data berhasil disinkronkan.'
+              : 'Sinkronisasi belum berhasil. Coba lagi.',
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = AuthScope.watch(context);
+    final sync = CloudSyncScope.watch(context);
     final name = _profile.name ?? 'Pengguna Stev';
     final drinkTime = _profile.drinkTime ?? 'Belum dipilih';
 
@@ -194,6 +246,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   color: StevColors.ink2,
                                 ),
                               ),
+                              if (auth.isSignedIn) ...[
+                                const SizedBox(height: StevSpace.s1),
+                                Text(
+                                  _syncStatusLabel(sync),
+                                  key: const ValueKey('cloudSyncStatus'),
+                                  style: StevType.caption.copyWith(
+                                    color: sync.status == CloudSyncStatus.error
+                                        ? Theme.of(context).colorScheme.error
+                                        : StevColors.ink2,
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -211,9 +275,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       onPressed: auth.isLoading
                           ? null
                           : auth.isSignedIn
-                          ? () => auth.signOut()
+                          ? _signOut
                           : () => context.push('/auth'),
                     ),
+                    if (auth.isSignedIn) ...[
+                      const SizedBox(height: StevSpace.s2),
+                      StevButton(
+                        key: const ValueKey('syncNowButton'),
+                        label: sync.status == CloudSyncStatus.syncing
+                            ? 'Menyinkronkan...'
+                            : 'Sinkronkan sekarang',
+                        variant: StevButtonVariant.ghost,
+                        icon: const Icon(Icons.sync_rounded),
+                        onPressed:
+                            sync.canSync &&
+                                sync.status != CloudSyncStatus.syncing
+                            ? _syncNow
+                            : null,
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -256,7 +336,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const SizedBox(width: StevSpace.s3),
                     Expanded(
                       child: Text(
-                        'Profil dan catatan minuman tersimpan di perangkat ini.',
+                        auth.isSignedIn
+                            ? 'Data tersimpan di perangkat dan dapat disinkronkan ke akunmu.'
+                            : 'Profil dan catatan minuman tersimpan di perangkat ini.',
                         style: StevType.caption.copyWith(
                           color: StevColors.ink2,
                         ),
@@ -303,6 +385,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
         onProfile: () {},
       ),
     );
+  }
+
+  String _syncStatusLabel(CloudSyncController sync) => switch (sync.status) {
+    CloudSyncStatus.unavailable => 'Sinkronisasi tidak tersedia',
+    CloudSyncStatus.signedOut => 'Belum masuk akun',
+    CloudSyncStatus.idle => 'Siap disinkronkan',
+    CloudSyncStatus.syncing => 'Sedang menyinkronkan data...',
+    CloudSyncStatus.synced =>
+      sync.lastSyncedAt == null
+          ? 'Data sudah sinkron'
+          : 'Terakhir sinkron ${_timeLabel(sync.lastSyncedAt!)}',
+    CloudSyncStatus.error => sync.errorMessage ?? 'Sinkronisasi gagal',
+  };
+
+  String _timeLabel(DateTime timestamp) {
+    final local = timestamp.toLocal();
+    final hour = local.hour.toString().padLeft(2, '0');
+    final minute = local.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
   }
 }
 

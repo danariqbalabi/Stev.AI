@@ -339,6 +339,21 @@ class DrinkLogController extends ChangeNotifier {
     _pendingLoggedEvent = null;
     notifyListeners();
   }
+
+  Future<void> reloadLocalState() async {
+    final preferences = _preferences;
+    if (preferences == null) return;
+    await _pendingWrite;
+    final target = _today ?? _now();
+    final storedDay = await preferences.readDay(target);
+    _entries
+      ..clear()
+      ..addAll(storedDay?.entries ?? const <DrinkSelection>[]);
+    _savedGrams = storedDay?.savedGrams ?? 0;
+    _checkedIn = storedDay?.checkedIn ?? false;
+    _pendingLoggedEvent = null;
+    notifyListeners();
+  }
 }
 
 class DrinkLogScope extends InheritedNotifier<DrinkLogController> {

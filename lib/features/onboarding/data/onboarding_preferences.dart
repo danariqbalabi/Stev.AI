@@ -1,5 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../profile/data/local_data_preferences.dart';
+
 class OnboardingProfile {
   const OnboardingProfile({this.name, this.drinkTime});
 
@@ -42,6 +44,7 @@ abstract final class OnboardingPreferences {
       await preferences.setString(drinkTimeKey, drinkTime);
     }
     await preferences.setBool(completeKey, true);
+    await LocalDataPreferences.touch();
   }
 
   static const _validDrinkTimes = {'Pagi', 'Siang', 'Sore', 'Malam'};

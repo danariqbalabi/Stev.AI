@@ -4,6 +4,7 @@ import 'package:flutter/painting.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../domain/drink.dart';
+import '../../profile/data/local_data_preferences.dart';
 
 class StoredDrinkLog {
   StoredDrinkLog({
@@ -109,6 +110,7 @@ class DrinkLogPreferences {
     });
     await preferences.setString(_keyFor(date), encoded);
     await preferences.setString(lastActiveDateKey, normalizedDate);
+    await LocalDataPreferences.touch();
   }
 
   Future<String?> readLastActiveDate() async {

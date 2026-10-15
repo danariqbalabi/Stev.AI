@@ -82,7 +82,7 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
               const SizedBox(height: StevSpace.s2),
               Text(
-                'Akun menyiapkan datamu agar nanti bisa disinkronkan dengan aman di perangkat lain.',
+                'Dengan masuk, profil dan catatan kesehatanmu dicadangkan ke akun agar bisa dipulihkan di perangkat lain. Mode tamu tetap hanya menyimpan data lokal.',
                 style: StevType.body.copyWith(color: StevColors.ink2),
               ),
               const SizedBox(height: StevSpace.s5),
