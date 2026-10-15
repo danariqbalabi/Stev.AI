@@ -328,7 +328,11 @@ void main() {
     await tester.pumpWidget(StevAiApp(router: router));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(ValueKey('deleteRiskHistory-${entry.id}')));
+    final deleteButton = find.byKey(ValueKey('deleteRiskHistory-${entry.id}'));
+    await tester.scrollUntilVisible(deleteButton, 200);
+    await tester.drag(find.byType(ListView), const Offset(0, -100));
+    await tester.pumpAndSettle();
+    await tester.tap(deleteButton);
     await tester.pumpAndSettle();
     expect(find.text('Hapus hasil cek?'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('confirmDeleteRiskHistory')));

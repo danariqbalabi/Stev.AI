@@ -140,6 +140,7 @@ Font Onest disimpan lokal agar konsisten pada Android dan web. Lisensi SIL Open 
 - `shared_preferences` untuk status onboarding, profil, dan log minuman harian lokal.
 - Android dan Flutter Web dari satu codebase.
 - Supabase/PostgreSQL untuk katalog remote, dengan Row Level Security dan fallback data lokal.
+- Supabase Auth untuk akun email opsional; aplikasi tetap dapat dipakai sebagai tamu.
 - Backend/Edge Function untuk menjaga API key layanan AI agar tidak tersimpan di client.
 - Git dan GitHub dengan branch per fitur.
 
@@ -257,6 +258,17 @@ flutter run -d chrome --dart-define-from-file=config/env.local.json
 ```
 
 Migration mengaktifkan RLS. Client hanya dapat membaca minuman terverifikasi beserta opsi gula dan aliasnya. Operasi tulis tidak dibuka untuk client; penambahan atau verifikasi data harus dilakukan melalui dashboard atau backend yang aman. Jangan pernah memasukkan service-role key ke Flutter.
+
+### Mengaktifkan akun pengguna
+
+Login dan pendaftaran email otomatis aktif saat konfigurasi Supabase di atas valid. Di Supabase Dashboard:
+
+1. Buka **Authentication → Providers → Email** dan pastikan provider Email aktif.
+2. Buka **Authentication → URL Configuration**.
+3. Isi **Site URL** dengan URL production, misalnya `https://stev-ai.vercel.app`.
+4. Tambahkan `http://localhost:*` pada Redirect URLs untuk development lokal.
+
+Pengguna tetap dapat memilih mode tamu. Fitur akun pada tahap ini menyediakan identitas dan session persisten; pemindahan log minuman dan data keluarga ke cloud dikerjakan pada fitur sinkronisasi berikutnya.
 
 ## Pemeriksaan kualitas
 

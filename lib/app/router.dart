@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/theme/stev_tokens.dart';
+import '../features/auth/presentation/auth_screen.dart';
 import '../features/confirmation/presentation/confirmation_screen.dart';
 import '../features/custom_drink/presentation/custom_drink_screen.dart';
 import '../features/dashboard/presentation/dashboard_screen.dart';
@@ -27,6 +28,11 @@ GoRouter createAppRouter({required bool onboardingComplete}) {
   return GoRouter(
     initialLocation: onboardingComplete ? '/' : '/onboarding',
     routes: [
+      GoRoute(
+        path: '/auth',
+        pageBuilder: (context, state) =>
+            _fadePage(state: state, child: const AuthScreen()),
+      ),
       GoRoute(
         path: '/onboarding',
         pageBuilder: (context, state) =>

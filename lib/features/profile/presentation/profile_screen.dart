@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/stev_tokens.dart';
 import '../../../shared/widgets/stev_design_system.dart';
+import '../../auth/application/auth_controller.dart';
 import '../../drinks/application/drink_log_controller.dart';
 import '../../family/application/family_controller.dart';
 import '../../onboarding/data/onboarding_preferences.dart';
@@ -105,6 +106,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
     if (!confirmed || !mounted) return;
 
+    await AuthScope.read(context).signOut(localOnly: true);
+    if (!mounted) return;
     await DrinkLogScope.read(context).resetLocalState();
     if (!mounted) return;
     FamilyScope.read(context).resetLocalState();
@@ -114,6 +117,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final auth = AuthScope.watch(context);
     final name = _profile.name ?? 'Pengguna Stev';
     final drinkTime = _profile.drinkTime ?? 'Belum dipilih';
 
@@ -152,6 +156,63 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       key: const ValueKey('editProfileButton'),
                       label: 'Ubah profil',
                       onPressed: _editProfile,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: StevSpace.s4),
+              Text('Akun', style: StevType.heading),
+              const SizedBox(height: StevSpace.s3),
+              GlassCard(
+                key: const ValueKey('profileAccountCard'),
+                padding: const EdgeInsets.all(StevSpace.s4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          auth.isSignedIn
+                              ? Icons.cloud_done_outlined
+                              : Icons.cloud_off_outlined,
+                        ),
+                        const SizedBox(width: StevSpace.s3),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                auth.isSignedIn
+                                    ? 'Akun terhubung'
+                                    : 'Mode tamu',
+                                style: StevType.label,
+                              ),
+                              const SizedBox(height: StevSpace.s1),
+                              Text(
+                                auth.user?.email ?? 'Data saat ini hanya tersimpan di perangkat ini.',
+                                style: StevType.caption.copyWith(
+                                  color: StevColors.ink2,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: StevSpace.s3),
+                    StevButton(
+                      key: ValueKey(
+                        auth.isSignedIn ? 'signOutButton' : 'openAuthButton',
+                      ),
+                      label: auth.isSignedIn
+                          ? 'Keluar dari akun'
+                          : 'Masuk atau daftar',
+                      variant: StevButtonVariant.card,
+                      onPressed: auth.isLoading
+                          ? null
+                          : auth.isSignedIn
+                          ? () => auth.signOut()
+                          : () => context.push('/auth'),
                     ),
                   ],
                 ),

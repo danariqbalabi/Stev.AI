@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'app/app.dart';
 import 'app/router.dart';
 import 'core/config/stev_backend_config.dart';
+import 'features/auth/application/auth_controller.dart';
+import 'features/auth/data/supabase_auth_gateway.dart';
 import 'features/drinks/application/drink_catalog_controller.dart';
 import 'features/drinks/application/drink_log_controller.dart';
 import 'features/home_widget/application/home_widget_bridge.dart';
@@ -15,6 +17,7 @@ import 'features/risk_assessment/data/risk_reminder_scheduler.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final supabaseClient = await StevBackendConfig.initialize();
+  final authController = AuthController(SupabaseAuthGateway(supabaseClient));
   final drinkCatalogController = DrinkCatalogController.forBackend(
     supabaseClient,
   );
@@ -36,6 +39,7 @@ Future<void> main() async {
   runApp(
     StevAiApp(
       router: router,
+      authController: authController,
       drinkLogController: drinkLogController,
       drinkCatalogController: drinkCatalogController,
       familyController: familyController,
