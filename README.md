@@ -76,12 +76,13 @@ Saat ini repository berisi alur MVP awal yang dapat diklik:
 - Confidence hasil recognition diteruskan ke UI; kandidat di bawah 55% ditolak dan pengguna diarahkan untuk memotret ulang atau mencari manual.
 - Fondasi Supabase untuk katalog remote, schema/RLS, seed 10 minuman, gambar remote, dan fallback offline ke katalog lokal.
 - Personalisasi Dashboard dari nama dan waktu beli minuman yang disimpan saat onboarding.
-- Skrining risiko diabetes untuk diri sendiri atau orang tua: delapan pertanyaan, kategori risiko, faktor utama, estimasi minimal untuk jawaban yang tidak diketahui, dan arahan pemeriksaan. Jawaban hanya diproses di memori perangkat dan tidak disimpan.
-- Hasil skrining diri sendiri tanpa copy Ajak & Rujukan; alur pendampingan dan share hanya muncul untuk pemeriksaan orang tua.
+- Skrining FINDRISC untuk diri sendiri atau orang tua: delapan jawaban wajib, lima level risiko, skor 0-26, faktor utama, dan perkiraan risiko 10 tahun. Jawaban hanya diproses di memori perangkat dan tidak disimpan.
+- Input lingkar pinggang memakai batas berbeda untuk pria dan wanita; kalkulator BMI membulatkan hasil ke satu desimal sebelum menentukan poin.
+- Hasil risiko memberi rekomendasi GDP, HbA1c, dan TTGO sesuai level risiko tanpa mengklaim diagnosis.
 - Kalkulator BMI lokal dari tinggi dan berat badan untuk membantu menjawab skrining tanpa menyimpan ukuran tubuh.
 - Notifikasi Android sungguhan yang dijadwalkan tujuh hari setelah skrining dan dapat dibatalkan dari aplikasi.
 - Tab Keluarga lokal untuk melacak status undangan dan pemeriksaan anggota keluarga tanpa menyimpan jawaban, skor, atau BMI.
-- Ajak & Rujukan untuk orang tua dengan pesan yang dapat diedit, share sheet sistem, informasi Cek Kesehatan Gratis, dan tanpa memasukkan skor atau jawaban kesehatan ke pesan.
+- Empat poster ajakan untuk mode diri sendiri/Ayah-Ibu dan risiko Sedang/Tinggi, dibagikan bersama pesan otomatis berisi level dan skor melalui share sheet sistem.
 - Animasi satu kali dari hasil pencatatan menuju riwayat Dashboard, termasuk meter gula yang ikut berubah dan dukungan reduced motion.
 - Evaluation harness untuk mengukur top-1/top-3, penolakan non-minuman, false positive, error request, dan latency recognition.
 - Navigasi Android dan web.

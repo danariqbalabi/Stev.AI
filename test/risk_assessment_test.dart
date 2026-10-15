@@ -4,9 +4,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:steviai/app/app.dart';
 import 'package:steviai/app/router.dart';
 import 'package:steviai/core/theme/stev_tokens.dart';
-import 'package:steviai/features/risk_assessment/domain/bmi_calculator.dart';
 import 'package:steviai/features/risk_assessment/data/risk_reminder_scheduler.dart';
+import 'package:steviai/features/risk_assessment/domain/bmi_calculator.dart';
 import 'package:steviai/features/risk_assessment/domain/risk_assessment.dart';
+import 'package:steviai/features/risk_assessment/domain/waist_calculator.dart';
 import 'package:steviai/features/risk_assessment/presentation/risk_assessment_screen.dart';
 import 'package:steviai/features/risk_assessment/presentation/risk_invite_screen.dart';
 import 'package:steviai/features/risk_assessment/presentation/risk_result_screen.dart';
@@ -14,138 +15,98 @@ import 'package:steviai/features/risk_assessment/presentation/risk_result_screen
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('RiskAssessment', () {
-    test('calculates BMI locally and maps its score categories', () {
+  group('FINDRISC domain', () {
+    test('rounds BMI to one decimal before assigning its category', () {
       final calculation = BmiCalculator.calculate(
-        heightCentimeters: '170',
-        weightKilograms: '60',
+        heightCentimeters: '100',
+        weightKilograms: '30.04',
       );
 
       expect(calculation, isNotNull);
-      expect(calculation!.value, closeTo(20.76, 0.01));
-      expect(calculation.category, BmiCategory.below25);
+      expect(calculation!.value, 30);
+      expect(calculation.category, BmiCategory.from25To30);
       expect(BmiCalculator.categoryFor(25), BmiCategory.from25To30);
       expect(BmiCalculator.categoryFor(30), BmiCategory.from25To30);
-      expect(BmiCalculator.categoryFor(30.01), BmiCategory.above30);
+      expect(BmiCalculator.categoryFor(30.1), BmiCategory.above30);
+    });
+
+    test('uses sex-specific inclusive waist boundaries', () {
       expect(
-        BmiCalculator.calculate(heightCentimeters: '0', weightKilograms: '60'),
-        isNull,
+        WaistCalculator.calculate(
+          circumferenceCentimeters: '94',
+          sex: WaistSex.male,
+        )!.category,
+        WaistCategory.middleRange,
+      );
+      expect(
+        WaistCalculator.calculate(
+          circumferenceCentimeters: '102',
+          sex: WaistSex.male,
+        )!.category,
+        WaistCategory.middleRange,
+      );
+      expect(
+        WaistCalculator.calculate(
+          circumferenceCentimeters: '88.1',
+          sex: WaistSex.female,
+        )!.category,
+        WaistCategory.aboveThreshold,
       );
     });
 
-    test('classifies the demo high-risk answers and ranks factors', () {
+    test('maps all five FINDRISC score bands', () {
+      expect(RiskAssessment.levelForScore(0), RiskLevel.low);
+      expect(RiskAssessment.levelForScore(6), RiskLevel.low);
+      expect(RiskAssessment.levelForScore(7), RiskLevel.slightlyElevated);
+      expect(RiskAssessment.levelForScore(11), RiskLevel.slightlyElevated);
+      expect(RiskAssessment.levelForScore(12), RiskLevel.medium);
+      expect(RiskAssessment.levelForScore(14), RiskLevel.medium);
+      expect(RiskAssessment.levelForScore(15), RiskLevel.high);
+      expect(RiskAssessment.levelForScore(20), RiskLevel.high);
+      expect(RiskAssessment.levelForScore(21), RiskLevel.veryHigh);
+      expect(RiskAssessment.levelForScore(26), RiskLevel.veryHigh);
+    });
+
+    test('requires all eight answers', () {
+      expect(
+        () => RiskAssessment.evaluate(
+          subject: RiskSubject.self,
+          answers: [RiskAssessment.questions.first.options.first],
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        RiskAssessment.questions.expand((question) => question.options),
+        isNot(
+          contains(
+            predicate<RiskOption>((option) => option.label == 'Tidak tahu'),
+          ),
+        ),
+      );
+    });
+
+    test('evaluates the documented 13 point example as medium', () {
       final result = RiskAssessment.evaluate(
-        subject: RiskSubject.parent,
+        subject: RiskSubject.self,
         answers: [
-          RiskAssessment.questions[0].options[3],
-          RiskAssessment.questions[1].options[2],
-          RiskAssessment.questions[2].options[2],
+          RiskAssessment.questions[0].options[1],
+          RiskAssessment.questions[1].options[1],
+          RiskAssessment.questions[2].options[1],
           RiskAssessment.questions[3].options[1],
-          RiskAssessment.questions[4].options[1],
-          RiskAssessment.questions[5].options[1],
-          RiskAssessment.questions[6].options[1],
+          RiskAssessment.questions[4].options[0],
+          RiskAssessment.questions[5].options[0],
+          RiskAssessment.questions[6].options[0],
           RiskAssessment.questions[7].options[2],
         ],
       );
 
-      expect(result.score, 19);
-      expect(result.level, RiskLevel.high);
-      expect(result.topFactors, [
-        'Riwayat keluarga inti',
-        'Usia di atas 64',
-        'Lingkar pinggang tinggi',
-      ]);
-      expect(result.isMinimumEstimate, isFalse);
-    });
-
-    test('classifies the medium-risk boundary', () {
-      final result = RiskAssessment.evaluate(
-        subject: RiskSubject.self,
-        answers: [
-          RiskAssessment.questions[0].options[2],
-          RiskAssessment.questions[1].options[2],
-          RiskAssessment.questions[2].options[2],
-          RiskAssessment.questions[3].options[1],
-          RiskAssessment.questions[4].options[0],
-          RiskAssessment.questions[5].options[1],
-          RiskAssessment.questions[6].options[1],
-          RiskAssessment.questions[7].options[0],
-        ],
-      );
-
-      expect(result.score, 12);
+      expect(result.score, 13);
       expect(result.level, RiskLevel.medium);
-    });
-
-    test('classifies lowest answers as low risk', () {
-      final result = RiskAssessment.evaluate(
-        subject: RiskSubject.self,
-        answers: [
-          RiskAssessment.questions[0].options[0],
-          RiskAssessment.questions[1].options[0],
-          RiskAssessment.questions[2].options[0],
-          RiskAssessment.questions[3].options[0],
-          RiskAssessment.questions[4].options[0],
-          RiskAssessment.questions[5].options[1],
-          RiskAssessment.questions[6].options[1],
-          RiskAssessment.questions[7].options[0],
-        ],
-      );
-
-      expect(result.score, 0);
-      expect(result.level, RiskLevel.low);
-      expect(result.topFactors, isEmpty);
-    });
-
-    test('marks results with unknown answers as minimum estimates', () {
-      final answers = List.generate(
-        RiskAssessment.questions.length,
-        (index) => RiskAssessment.questions[index].options.last,
-      );
-      final result = RiskAssessment.evaluate(
-        subject: RiskSubject.parent,
-        answers: answers,
-      );
-
-      expect(result.isMinimumEstimate, isTrue);
-      expect(result.level, RiskLevel.low);
+      expect(result.shouldOfferParentInvite, isTrue);
     });
   });
 
-  testWidgets('uses the final risk labels and minimum estimate treatment', (
-    tester,
-  ) async {
-    const result = RiskAssessmentResult(
-      subject: RiskSubject.parent,
-      level: RiskLevel.low,
-      isMinimumEstimate: true,
-      topFactors: [],
-      score: 0,
-    );
-
-    await tester.pumpWidget(
-      const MaterialApp(home: RiskResultScreen(result: result)),
-    );
-
-    expect(find.text('Rendah'), findsOneWidget);
-    expect(find.text('Estimasi minimal'), findsOneWidget);
-    expect(find.textContaining('karena ada jawaban'), findsNothing);
-    expect(
-      find.ancestor(
-        of: find.byKey(const ValueKey('minimumEstimateLabel')),
-        matching: find.byType(Wrap),
-      ),
-      findsWidgets,
-    );
-
-    final pill = tester.widget<Container>(
-      find.byKey(const ValueKey('riskLevelPill')),
-    );
-    final decoration = pill.decoration! as BoxDecoration;
-    expect(decoration.color, StevColors.ink);
-  });
-
-  testWidgets('uses the reduced transition duration when motion is disabled', (
+  testWidgets('uses reduced transition duration when motion is disabled', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -157,13 +118,13 @@ void main() {
       ),
     );
 
-    final switcher = tester.widget<AnimatedSwitcher>(
-      find.byType(AnimatedSwitcher),
+    expect(
+      tester.widget<AnimatedSwitcher>(find.byType(AnimatedSwitcher)).duration,
+      StevMotion.reduced,
     );
-    expect(switcher.duration, StevMotion.reduced);
   });
 
-  testWidgets('completes the low-risk flow without showing a raw score', (
+  testWidgets('completes all required inputs and shows a low result', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
@@ -177,118 +138,97 @@ void main() {
     await tester.pumpWidget(StevAiApp(router: router));
     await tester.pumpAndSettle();
 
-    expect(find.text('Cek risiko untuk siapa?'), findsOneWidget);
-    expect(
-      find.textContaining('Jawaban diproses di perangkatmu'),
-      findsOneWidget,
-    );
     await tester.tap(find.text('Diri sendiri'));
     await tester.pumpAndSettle();
-
+    expect(find.text('Tidak tahu'), findsNothing);
     await tester.tap(find.byKey(const ValueKey('riskOption-<45')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('bmiQuestionStep')), findsOneWidget);
     await tester.enterText(find.byKey(const ValueKey('bmiHeightField')), '170');
     await tester.enterText(find.byKey(const ValueKey('bmiWeightField')), '60');
     await tester.pump();
-    expect(find.text('Kategori <25'), findsOneWidget);
-    await tester.ensureVisible(find.byKey(const ValueKey('bmiContinue')));
     await tester.tap(find.byKey(const ValueKey('bmiContinue')));
     await tester.pumpAndSettle();
-
-    const answerLabels = ['Rendah', 'Ya', 'Ya', 'Tidak', 'Tidak', 'Tidak ada'];
-    for (final label in answerLabels) {
+    await tester.tap(find.text('Pria'));
+    await tester.enterText(find.byKey(const ValueKey('waistField')), '90');
+    await tester.pump();
+    expect(find.text('Kategori Di bawah batas'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('waistContinue')));
+    await tester.pumpAndSettle();
+    for (final label in ['Ya', 'Ya', 'Tidak', 'Tidak', 'Tidak']) {
       await tester.tap(find.byKey(ValueKey('riskOption-$label')));
       await tester.pumpAndSettle();
     }
 
     expect(find.byKey(const ValueKey('riskResultScreen')), findsOneWidget);
-    expect(find.text('Rendah'), findsOneWidget);
-    expect(find.text('Belum ada faktor utama'), findsOneWidget);
-    expect(find.text('0'), findsNothing);
-    expect(
-      find.textContaining('Ini skrining, bukan diagnosis'),
-      findsOneWidget,
-    );
-    await tester.drag(
-      find.byKey(const ValueKey('riskResultScreen')),
-      const Offset(0, -500),
-    );
-    await tester.pumpAndSettle();
+    expect(find.text('Risiko Rendah'), findsOneWidget);
+    expect(find.byKey(const ValueKey('riskScore')), findsOneWidget);
     expect(find.byKey(const ValueKey('openRiskInvite')), findsNothing);
-    await tester.tap(find.byKey(const ValueKey('finishRiskAssessment')));
-    await tester.pump();
-    await tester.pump(StevMotion.screenFade);
-    expect(find.byKey(const ValueKey('dashboardScreen')), findsOneWidget);
-    expect(tester.takeException(), isNull);
+    expect(find.text('GDP (Gula Darah Puasa)'), findsNothing);
   });
 
-  testWidgets('offers referral only for a parent assessment', (tester) async {
+  testWidgets('medium self result offers tests and a parent poster', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-
     const result = RiskAssessmentResult(
-      subject: RiskSubject.parent,
+      subject: RiskSubject.self,
       level: RiskLevel.medium,
-      isMinimumEstimate: false,
-      topFactors: ['Usia 55–64'],
+      topFactors: ['Riwayat keluarga inti'],
       score: 12,
     );
-    final router = createAppRouter(onboardingComplete: true)
-      ..go('/risk/result', extra: result);
-    addTearDown(router.dispose);
-    await tester.pumpWidget(StevAiApp(router: router));
-    await tester.pumpAndSettle();
 
-    await tester.drag(
-      find.byKey(const ValueKey('riskResultScreen')),
-      const Offset(0, -500),
+    await tester.pumpWidget(
+      const MaterialApp(home: RiskResultScreen(result: result)),
     );
     await tester.pumpAndSettle();
+    for (var index = 0; index < 4; index++) {
+      await tester.drag(find.byType(ListView), const Offset(0, -500));
+      await tester.pumpAndSettle();
+    }
+
+    expect(find.text('GDP (Gula Darah Puasa)'), findsOneWidget);
+    expect(find.text('HbA1c'), findsOneWidget);
+    expect(find.text('TTGO (Tes Toleransi Glukosa Oral)'), findsOneWidget);
     expect(find.byKey(const ValueKey('openRiskInvite')), findsOneWidget);
-    await tester.tap(find.byKey(const ValueKey('openRiskInvite')));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('riskInviteScreen')), findsOneWidget);
   });
 
-  testWidgets('shares only the edited referral message', (tester) async {
+  testWidgets('shares the correct poster with an editable scored message', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
+    RiskSharePayload? sharedPayload;
+    const result = RiskAssessmentResult(
+      subject: RiskSubject.self,
+      level: RiskLevel.high,
+      topFactors: [],
+      score: 16,
+    );
 
-    String? sharedMessage;
     await tester.pumpWidget(
       MaterialApp(
         home: RiskInviteScreen(
-          subject: RiskSubject.parent,
-          shareMessage: (message, origin) async {
-            sharedMessage = message;
+          result: result,
+          shareMessage: (payload, origin) async {
+            sharedPayload = payload;
           },
         ),
       ),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Ajak & Rujukan'), findsOneWidget);
-    expect(find.text('Pesan buat Ibu/Bapak'), findsOneWidget);
-    expect(find.text('Dewasa 18+'), findsOneWidget);
-    expect(find.text('Puskesmas terdekat'), findsOneWidget);
-
-    const editedMessage = 'Bu, Sabtu kita cek gula darah bareng, yuk.';
-    await tester.enterText(
-      find.byKey(const ValueKey('riskInviteMessage')),
-      editedMessage,
-    );
+    expect(find.byKey(const ValueKey('riskPosterPreview')), findsOneWidget);
+    expect(find.textContaining('hasilku Tinggi (skor 16)'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('shareRiskMessage')));
     await tester.pumpAndSettle();
 
-    expect(sharedMessage, editedMessage);
-    expect(sharedMessage, isNot(contains('Risiko tinggi')));
-    expect(sharedMessage, isNot(contains('19')));
-    expect(tester.takeException(), isNull);
+    expect(sharedPayload!.message, contains('skor 16'));
+    expect(sharedPayload!.posterAsset, endsWith('poster_diri_tinggi.jpeg'));
   });
 
   testWidgets('schedules and cancels the seven day reminder', (tester) async {
@@ -296,14 +236,19 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: RiskInviteScreen(
-          subject: RiskSubject.parent,
+          result: const RiskAssessmentResult(
+            subject: RiskSubject.parent,
+            level: RiskLevel.medium,
+            topFactors: [],
+            score: 12,
+          ),
           reminderScheduler: scheduler,
         ),
       ),
     );
     await tester.pumpAndSettle();
 
-    await tester.drag(find.byType(ListView), const Offset(0, -500));
+    await tester.drag(find.byType(ListView), const Offset(0, -1000));
     await tester.pumpAndSettle();
     final reminderSwitch = find.byKey(const ValueKey('riskReminderSwitch'));
     await tester.ensureVisible(reminderSwitch);

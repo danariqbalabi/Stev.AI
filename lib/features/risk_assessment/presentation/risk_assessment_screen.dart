@@ -9,6 +9,7 @@ import '../../family/application/family_controller.dart';
 import '../../family/domain/family_member.dart';
 import '../domain/bmi_calculator.dart';
 import '../domain/risk_assessment.dart';
+import '../domain/waist_calculator.dart';
 
 class RiskAssessmentScreen extends StatefulWidget {
   const RiskAssessmentScreen({super.key, this.familyMemberId});
@@ -28,6 +29,8 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
   );
   final _heightController = TextEditingController();
   final _weightController = TextEditingController();
+  final _waistController = TextEditingController();
+  WaistSex? _waistSex;
 
   @override
   void initState() {
@@ -39,6 +42,7 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
   void dispose() {
     _heightController.dispose();
     _weightController.dispose();
+    _waistController.dispose();
     super.dispose();
   }
 
@@ -97,6 +101,23 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
     _answer(option);
   }
 
+  WaistCalculation? get _waistCalculation => WaistCalculator.calculate(
+    circumferenceCentimeters: _waistController.text,
+    sex: _waistSex,
+  );
+
+  void _answerWaist() {
+    final calculation = _waistCalculation;
+    if (calculation == null) return;
+    final options = RiskAssessment.questions[2].options;
+    final option = switch (calculation.category) {
+      WaistCategory.belowThreshold => options[0],
+      WaistCategory.middleRange => options[1],
+      WaistCategory.aboveThreshold => options[2],
+    };
+    _answer(option);
+  }
+
   @override
   Widget build(BuildContext context) {
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
@@ -148,8 +169,18 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
                           calculation: _bmiCalculation,
                           onChanged: () => setState(() {}),
                           onContinue: _answerBmi,
-                          onUnknown: () =>
-                              _answer(RiskAssessment.questions[1].options.last),
+                        )
+                      : _questionIndex == 2
+                      ? _WaistQuestionStep(
+                          key: const ValueKey('waistQuestionStep'),
+                          subject: _subject!,
+                          controller: _waistController,
+                          selectedSex: _waistSex,
+                          calculation: _waistCalculation,
+                          onSexChanged: (sex) =>
+                              setState(() => _waistSex = sex),
+                          onChanged: () => setState(() {}),
+                          onContinue: _answerWaist,
                         )
                       : _QuestionStep(
                           key: ValueKey(_questionIndex),
@@ -177,7 +208,6 @@ class _BmiQuestionStep extends StatelessWidget {
     required this.calculation,
     required this.onChanged,
     required this.onContinue,
-    required this.onUnknown,
   });
 
   final RiskSubject subject;
@@ -186,7 +216,6 @@ class _BmiQuestionStep extends StatelessWidget {
   final BmiCalculation? calculation;
   final VoidCallback onChanged;
   final VoidCallback onContinue;
-  final VoidCallback onUnknown;
 
   String get _categoryLabel => switch (calculation?.category) {
     BmiCategory.below25 => '<25',
@@ -240,7 +269,9 @@ class _BmiQuestionStep extends StatelessWidget {
               child: _MeasurementField(
                 key: const ValueKey('bmiHeightField'),
                 controller: heightController,
-                label: 'Tinggi',
+                label: subject == RiskSubject.parent
+                    ? 'Tinggi badan Ayah/Ibu'
+                    : 'Tinggi badan',
                 suffix: 'cm',
                 onChanged: onChanged,
               ),
@@ -250,7 +281,9 @@ class _BmiQuestionStep extends StatelessWidget {
               child: _MeasurementField(
                 key: const ValueKey('bmiWeightField'),
                 controller: weightController,
-                label: 'Berat',
+                label: subject == RiskSubject.parent
+                    ? 'Berat badan Ayah/Ibu'
+                    : 'Berat badan',
                 suffix: 'kg',
                 onChanged: onChanged,
               ),
@@ -286,13 +319,135 @@ class _BmiQuestionStep extends StatelessWidget {
           variant: StevButtonVariant.leaf,
           onPressed: calculation == null ? null : onContinue,
         ),
-        const SizedBox(height: StevSpace.s3),
-        StevButton(
-          key: const ValueKey('bmiUnknown'),
-          label: 'Tidak tahu',
-          variant: StevButtonVariant.ghost,
-          onPressed: onUnknown,
+        if (subject == RiskSubject.parent) ...[
+          const SizedBox(height: StevSpace.s3),
+          Text(
+            'Belum tahu? Tanyakan terlebih dahulu kepada Ayah/Ibu.',
+            textAlign: TextAlign.center,
+            style: StevType.caption.copyWith(color: StevColors.ink2),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _WaistQuestionStep extends StatelessWidget {
+  const _WaistQuestionStep({
+    super.key,
+    required this.subject,
+    required this.controller,
+    required this.selectedSex,
+    required this.calculation,
+    required this.onSexChanged,
+    required this.onChanged,
+    required this.onContinue,
+  });
+
+  final RiskSubject subject;
+  final TextEditingController controller;
+  final WaistSex? selectedSex;
+  final WaistCalculation? calculation;
+  final ValueChanged<WaistSex> onSexChanged;
+  final VoidCallback onChanged;
+  final VoidCallback onContinue;
+
+  String get _categoryLabel => switch (calculation?.category) {
+    WaistCategory.belowThreshold => 'Di bawah batas',
+    WaistCategory.middleRange => 'Rentang tengah',
+    WaistCategory.aboveThreshold => 'Di atas batas',
+    null => '',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+        StevSpace.s5,
+        StevSpace.s6,
+        StevSpace.s5,
+        StevSpace.s6,
+      ),
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(StevRadius.pill),
+                child: const LinearProgressIndicator(
+                  minHeight: 8,
+                  value: 3 / 8,
+                  color: StevColors.leaf,
+                  backgroundColor: StevColors.card,
+                ),
+              ),
+            ),
+            const SizedBox(width: StevSpace.s3),
+            Text(
+              '3/8',
+              style: StevType.caption.copyWith(color: StevColors.ink2),
+            ),
+          ],
         ),
+        const SizedBox(height: StevSpace.s7),
+        Text(
+          RiskAssessment.questions[2].textFor(subject),
+          style: StevType.title,
+        ),
+        const SizedBox(height: StevSpace.s2),
+        Text(
+          'Ukur dengan meteran jahit sejajar pusar.',
+          style: StevType.body.copyWith(color: StevColors.ink2),
+        ),
+        const SizedBox(height: StevSpace.s5),
+        SegmentedButton<WaistSex>(
+          key: const ValueKey('waistSexSelector'),
+          segments: const [
+            ButtonSegment(value: WaistSex.male, label: Text('Pria')),
+            ButtonSegment(value: WaistSex.female, label: Text('Wanita')),
+          ],
+          selected: selectedSex == null ? const {} : {selectedSex!},
+          emptySelectionAllowed: true,
+          onSelectionChanged: (selection) {
+            if (selection.isNotEmpty) onSexChanged(selection.first);
+          },
+        ),
+        const SizedBox(height: StevSpace.s4),
+        _MeasurementField(
+          key: const ValueKey('waistField'),
+          controller: controller,
+          label: subject == RiskSubject.parent
+              ? 'Lingkar pinggang Ayah/Ibu'
+              : 'Lingkar pinggang',
+          suffix: 'cm',
+          onChanged: onChanged,
+        ),
+        if (calculation != null) ...[
+          const SizedBox(height: StevSpace.s4),
+          GlassCard(
+            child: Text(
+              'Kategori $_categoryLabel',
+              key: const ValueKey('waistCategory'),
+              textAlign: TextAlign.center,
+              style: StevType.heading,
+            ),
+          ),
+        ],
+        const SizedBox(height: StevSpace.s5),
+        StevButton(
+          key: const ValueKey('waistContinue'),
+          label: 'Lanjut',
+          variant: StevButtonVariant.leaf,
+          onPressed: calculation == null ? null : onContinue,
+        ),
+        if (subject == RiskSubject.parent) ...[
+          const SizedBox(height: StevSpace.s3),
+          Text(
+            'Belum tahu? Tanyakan terlebih dahulu kepada Ayah/Ibu.',
+            textAlign: TextAlign.center,
+            style: StevType.caption.copyWith(color: StevColors.ink2),
+          ),
+        ],
       ],
     );
   }
@@ -422,6 +577,14 @@ class _QuestionStep extends StatelessWidget {
             onTap: () => onSelected(option),
           ),
           const SizedBox(height: StevSpace.s3),
+        ],
+        if (subject == RiskSubject.parent) ...[
+          const SizedBox(height: StevSpace.s2),
+          Text(
+            'Belum tahu? Tanyakan terlebih dahulu kepada Ayah/Ibu.',
+            textAlign: TextAlign.center,
+            style: StevType.caption.copyWith(color: StevColors.ink2),
+          ),
         ],
       ],
     );

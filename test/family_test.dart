@@ -68,14 +68,22 @@ void main() {
     final memberId = family.members.single.id;
     await tester.tap(find.byKey(ValueKey('assessFamilyMember-$memberId')));
     await tester.pumpAndSettle();
-    expect(find.text('Usia Ibu/Bapak berapa?'), findsOneWidget);
+    expect(find.text('Usia Ayah/Ibu berapa?'), findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('riskOption-Tidak tahu')));
+    await tester.tap(find.byKey(const ValueKey('riskOption-<45')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('bmiUnknown')));
+    await tester.enterText(find.byKey(const ValueKey('bmiHeightField')), '160');
+    await tester.enterText(find.byKey(const ValueKey('bmiWeightField')), '55');
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('bmiContinue')));
     await tester.pumpAndSettle();
-    for (var index = 0; index < 6; index++) {
-      await tester.tap(find.byKey(const ValueKey('riskOption-Tidak tahu')));
+    await tester.tap(find.text('Wanita'));
+    await tester.enterText(find.byKey(const ValueKey('waistField')), '70');
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('waistContinue')));
+    await tester.pumpAndSettle();
+    for (final label in ['Ya', 'Ya', 'Tidak', 'Tidak', 'Tidak']) {
+      await tester.tap(find.byKey(ValueKey('riskOption-$label')));
       await tester.pumpAndSettle();
     }
 
@@ -96,15 +104,23 @@ void main() {
         controller: family,
         child: MaterialApp(
           home: RiskInviteScreen(
-            subject: RiskSubject.parent,
-            familyMemberId: memberId,
-            shareMessage: (message, origin) async {},
+            result: RiskAssessmentResult(
+              subject: RiskSubject.parent,
+              level: RiskLevel.medium,
+              topFactors: const [],
+              score: 12,
+              familyMemberId: memberId,
+            ),
+            shareMessage: (payload, origin) async {},
           ),
         ),
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('shareRiskMessage')));
+    final shareButton = find.byKey(const ValueKey('shareRiskMessage'));
+    await tester.ensureVisible(shareButton);
+    await tester.pumpAndSettle();
+    await tester.tap(shareButton);
     await tester.pumpAndSettle();
 
     expect(family.members.single.status, FamilyProgressStatus.invited);
