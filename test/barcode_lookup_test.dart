@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:steviai/features/barcode/data/barcode_lookup_service.dart';
 import 'package:steviai/features/barcode/domain/barcode_product.dart';
 import 'package:steviai/features/drinks/domain/drink.dart';
@@ -23,6 +24,122 @@ Map<String, Object?> product({Object? sugar = 10, Object? quantity = 330}) => {
 };
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  test(
+    'cache survives another service and stays explicitly unverified',
+    () async {
+      var requests = 0;
+      final clock = DateTime.utc(2026, 10, 16);
+      final client = MockClient((_) async {
+        requests++;
+        return http.Response(jsonEncode(product()), 200);
+      });
+      final first = BarcodeLookupService(
+        supabaseUrl: '',
+        client: client,
+        now: () => clock,
+      );
+      expect((await first.lookup(code)).cachedAt, isNull);
+      final offline = BarcodeLookupService(
+        supabaseUrl: '',
+        now: () => clock.add(const Duration(days: 1)),
+        client: MockClient((_) async => throw StateError('Must use cache')),
+      );
+      final cached = await offline.lookup(code);
+      expect(cached.cachedAt, clock);
+      expect(cached.selectionFor(cached.defaultPortions).grams, 33);
+      expect(
+        cached.selectionFor(1).drink.validationStatus,
+        DrinkValidationStatus.unverified,
+      );
+      expect(requests, 1);
+    },
+  );
+
+  test(
+    'expired cache refreshes and concurrent same-code requests coalesce',
+    () async {
+      var clock = DateTime.utc(2026, 10, 16);
+      var requests = 0;
+      final client = MockClient((_) async {
+        requests++;
+        return http.Response(
+          jsonEncode(product(sugar: requests == 1 ? 10 : 5)),
+          200,
+        );
+      });
+      final service = BarcodeLookupService(
+        supabaseUrl: '',
+        client: client,
+        now: () => clock,
+      );
+      await Future.wait([service.lookup(code), service.lookup(code)]);
+      expect(requests, 1);
+      clock = clock.add(const Duration(days: 7));
+      expect((await service.lookup(code)).sugarGramsPerPortion, 5);
+      expect(requests, 2);
+    },
+  );
+
+  test('429 cooldown persists and retry succeeds after Retry-After', () async {
+    var clock = DateTime.utc(2026, 10, 16);
+    var requests = 0;
+    final client = MockClient((_) async {
+      requests++;
+      return requests == 1
+          ? http.Response('{}', 429, headers: {'retry-after': '120'})
+          : http.Response(jsonEncode(product()), 200);
+    });
+    BarcodeLookupService service() =>
+        BarcodeLookupService(supabaseUrl: '', client: client, now: () => clock);
+    final limited = throwsA(
+      isA<BarcodeLookupException>().having(
+        (e) => e.retryAt,
+        'retryAt',
+        clock.add(const Duration(seconds: 120)),
+      ),
+    );
+    await expectLater(service().lookup(code), limited);
+    await expectLater(service().lookup(code), limited);
+    expect(requests, 1);
+    clock = clock.add(const Duration(seconds: 120));
+    expect((await service().lookup(code)).name, 'Minuman uji');
+    expect(requests, 2);
+  });
+
+  test(
+    'uncached repeated requests are paced even after a missing product',
+    () async {
+      var requests = 0;
+      final client = MockClient((_) async {
+        requests++;
+        return http.Response('{}', 404);
+      });
+      final clock = DateTime.utc(2026, 10, 16);
+      final service = BarcodeLookupService(
+        supabaseUrl: '',
+        client: client,
+        now: () => clock,
+      );
+      await expectLater(
+        service.lookup(code),
+        throwsA(isA<BarcodeLookupException>()),
+      );
+      await expectLater(
+        service.lookup('96385074'),
+        throwsA(
+          isA<BarcodeLookupException>().having(
+            (e) => e.retryAt,
+            'pacing',
+            isNotNull,
+          ),
+        ),
+      );
+      expect(requests, 1);
+    },
+  );
   test('validates GTIN checksum and preserves leading zeros', () {
     expect(validRetailBarcode(code), code);
     expect(validRetailBarcode('96385074'), '96385074');
@@ -187,6 +304,7 @@ void main() {
     'not found, provider errors and timeouts produce actionable errors',
     () async {
       for (final status in [404, 429, 500]) {
+        SharedPreferences.setMockInitialValues({});
         final service = BarcodeLookupService(
           supabaseUrl: '',
           client: MockClient((_) async => http.Response('{}', status)),
@@ -196,6 +314,7 @@ void main() {
           throwsA(isA<BarcodeLookupException>()),
         );
       }
+      SharedPreferences.setMockInitialValues({});
       final service = BarcodeLookupService(
         supabaseUrl: '',
         timeout: const Duration(milliseconds: 1),

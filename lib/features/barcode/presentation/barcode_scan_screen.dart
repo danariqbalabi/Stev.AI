@@ -13,10 +13,16 @@ import '../data/barcode_lookup_service.dart';
 import '../domain/barcode_product.dart';
 
 class BarcodeScanScreen extends StatefulWidget {
-  const BarcodeScanScreen({super.key, this.lookup, this.enableCamera = true});
+  const BarcodeScanScreen({
+    super.key,
+    this.lookup,
+    this.enableCamera = true,
+    this.now,
+  });
 
   final BarcodeLookup? lookup;
   final bool enableCamera;
+  final DateTime Function()? now;
 
   @override
   State<BarcodeScanScreen> createState() => _BarcodeScanScreenState();
@@ -29,6 +35,15 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
   final _portions = TextEditingController();
   String? _code;
   String? _error;
+  DateTime? _retryAt;
+  Timer? _retryTimer;
+  int get _retrySeconds {
+    final remaining =
+        _retryAt?.difference((widget.now ?? DateTime.now)()).inMilliseconds ??
+        0;
+    return remaining > 0 ? (remaining / 1000).ceil() : 0;
+  }
+
   BarcodeProduct? _product;
   bool _loading = false;
   bool _saving = false;
@@ -115,7 +130,19 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
         _portions.text = _format(product.defaultPortions);
       });
     } on BarcodeLookupException catch (error) {
-      if (mounted) setState(() => _error = error.message);
+      if (mounted) {
+        _retryTimer?.cancel();
+        setState(() {
+          _error = error.message;
+          _retryAt = error.retryAt;
+        });
+        if (_retrySeconds > 0) {
+          _retryTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+            if (!mounted || _retrySeconds == 0) timer.cancel();
+            if (mounted) setState(() {});
+          });
+        }
+      }
     } catch (_) {
       if (mounted) {
         setState(
@@ -161,6 +188,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
     WidgetsBinding.instance.removeObserver(this);
     _barcode.dispose();
     _portions.dispose();
+    _retryTimer?.cancel();
     unawaited(_scanner?.dispose());
     super.dispose();
   }
@@ -277,8 +305,12 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
                 if (product == null)
                   TextButton(
                     key: const ValueKey('retryBarcodeLookup'),
-                    onPressed: () => _find(_code!),
-                    child: const Text('Coba cari lagi'),
+                    onPressed: _retrySeconds > 0 ? null : () => _find(_code!),
+                    child: Text(
+                      _retrySeconds > 0
+                          ? 'Coba lagi dalam $_retrySeconds dtk'
+                          : 'Coba cari lagi',
+                    ),
                   ),
               ],
               if (!_loading && !_saving) ...[
@@ -294,6 +326,11 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
                 TextButton(
                   onPressed: () => _openFallback('/manual'),
                   child: const Text('Cari manual'),
+                ),
+                TextButton(
+                  key: const ValueKey('barcodeManualLabel'),
+                  onPressed: () => _openFallback('/nutrition/manual'),
+                  child: const Text('Isi label manual'),
                 ),
                 TextButton(
                   key: const ValueKey('barcodeCustomDrink'),
@@ -323,6 +360,12 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
       Text(product.barcode, style: StevType.caption),
       const SizedBox(height: StevSpace.s3),
       Text('Sumber: ${product.source}', style: StevType.caption),
+      if (product.cachedAt != null)
+        Text(
+          'Data tersimpan di perangkat (maksimal 7 hari). Tetap cocokkan dengan label kemasan.',
+          key: const ValueKey('barcodeCachedNotice'),
+          style: StevType.caption,
+        ),
       if (product.sourceUrl.isNotEmpty)
         SelectableText(product.sourceUrl, style: StevType.micro),
       const SizedBox(height: StevSpace.s3),

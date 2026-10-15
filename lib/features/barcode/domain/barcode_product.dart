@@ -23,6 +23,7 @@ class BarcodeProduct {
     this.defaultPortions = 1,
     this.imageUrl,
     this.catalogDrink,
+    this.cachedAt,
   });
 
   final String barcode;
@@ -34,6 +35,20 @@ class BarcodeProduct {
   final String sourceUrl;
   final String? imageUrl;
   final Drink? catalogDrink;
+  final DateTime? cachedAt;
+
+  BarcodeProduct fromCache(DateTime at) => BarcodeProduct(
+    barcode: barcode,
+    name: name,
+    sugarGramsPerPortion: sugarGramsPerPortion,
+    portionLabel: portionLabel,
+    source: source,
+    sourceUrl: sourceUrl,
+    defaultPortions: defaultPortions,
+    imageUrl: imageUrl,
+    catalogDrink: catalogDrink,
+    cachedAt: at,
+  );
 
   DrinkSelection selectionFor(double portions) {
     if (!portions.isFinite || portions <= 0 || portions > 100) {
@@ -59,9 +74,10 @@ class BarcodeProduct {
 }
 
 class BarcodeLookupException implements Exception {
-  const BarcodeLookupException(this.message);
+  const BarcodeLookupException(this.message, {this.retryAt});
 
   final String message;
+  final DateTime? retryAt;
 }
 
 abstract interface class BarcodeLookup {

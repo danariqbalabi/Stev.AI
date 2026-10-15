@@ -96,6 +96,10 @@ Edge Function recognition dan katalog cloud sudah tersedia di source code, tetap
 
 ## Data barcode
 
+Hasil barcode disimpan di perangkat maksimal **7 hari / 50 produk** untuk mengurangi request dan membuka produk yang pernah dicari saat offline. Hasil cache ditandai, sumber dan status verifikasi tetap dipertahankan; selalu cocokkan varian, ukuran, dan label kemasan. Cache serta cooldown tidak ikut ekspor/sinkronisasi akun dan ikut terhapus saat reset seluruh data aplikasi.
+
+Request ke Open Food Facts diberi jeda minimal 6 detik pada perangkat. Respons HTTP 429 mengikuti `Retry-After` (angka detik atau HTTP-date), dengan fallback 60 detik. Saat menunggu, pengguna tetap bisa Scan Label Gizi, isi label manual, atau cari minuman manual. Ini pembatasan client best-effort, bukan jaminan kuota per IP: banyak perangkat di Wi-Fi sama tetap dapat terkena limit bersama. Request tetap langsung dari perangkat pengguna, bukan server Vercel.
+
 Pencarian barcode hanya melakukan request baca: pertama ke `drinks.barcode` di Supabase (baris `verified = true`), lalu ke API Open Food Facts jika belum tersedia. Isi kolom barcode dengan EAN/UPC yang benar beserta `serving_ml` dan gula per porsi katalog. Tidak perlu migration atau Edge Function baru untuk fitur ini.
 
 Data Open Food Facts belum diverifikasi Stev.AI. Pengguna perlu mengecek varian dan ukuran pada label sebelum menekan **Konfirmasi & catat**. Gula per 100 ml dikalikan jumlah porsi yang diminum; ukuran kemasan dalam gram tidak dikonversi ke ml. Produk bubuk/sirup dan data tidak lengkap memerlukan input manual. Hasil tidak ditambahkan ke katalog publik.
