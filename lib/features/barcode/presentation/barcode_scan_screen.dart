@@ -34,6 +34,33 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
   late final BarcodeLookup _lookup = widget.lookup ?? BarcodeLookupService();
   final _barcode = TextEditingController();
   final _portions = TextEditingController();
+  final _volume = TextEditingController();
+  double _fraction = 1;
+  bool _confirmed = false;
+
+  double? get _volumeMl {
+    final ml = double.tryParse(_volume.text.replaceAll(',', '.'));
+    return ml != null && ml.isFinite && ml > 0 && ml <= 10000 ? ml : null;
+  }
+
+  void _edited() => setState(() => _confirmed = false);
+
+  double? get _total {
+    final product = _product;
+    if (product == null) return null;
+    if (product.portionMl == null) {
+      return _portionCount == null
+          ? null
+          : product.sugarGramsPerPortion * _portionCount!;
+    }
+    if (_volumeMl == null) return null;
+    try {
+      return product.selectionForVolume(_volumeMl!, _fraction).grams;
+    } on FormatException {
+      return null;
+    }
+  }
+
   String? _code;
   String? _error;
   DateTime? _retryAt;
@@ -132,6 +159,11 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
       setState(() {
         _product = product;
         _portions.text = _format(product.defaultPortions);
+        _volume.text = product.packageMl == null
+            ? ''
+            : _format(product.packageMl!);
+        _fraction = 1;
+        _confirmed = false;
       });
     } on BarcodeLookupException catch (error) {
       if (mounted) {
@@ -166,16 +198,29 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
       _error = null;
       _barcode.clear();
       _portions.clear();
+      _volume.clear();
+      _fraction = 1;
+      _confirmed = false;
     });
   }
 
   Future<void> _save() async {
     final product = _product;
     final count = _portionCount;
-    if (product == null || count == null || _saving) return;
+    if (product == null ||
+        count == null ||
+        _total == null ||
+        !_confirmed ||
+        _saving) {
+      return;
+    }
     setState(() => _saving = true);
     try {
-      await DrinkLogScope.read(context).log(product.selectionFor(count));
+      await DrinkLogScope.read(context).log(
+        product.portionMl == null
+            ? product.selectionFor(count)
+            : product.selectionForVolume(_volumeMl!, _fraction),
+      );
       if (mounted) context.go('/');
     } catch (_) {
       if (mounted) {
@@ -192,6 +237,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
     WidgetsBinding.instance.removeObserver(this);
     _barcode.dispose();
     _portions.dispose();
+    _volume.dispose();
     _retryTimer?.cancel();
     unawaited(_scanner?.dispose());
     super.dispose();
@@ -358,6 +404,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
 
   List<Widget> _productContent(BarcodeProduct product) {
     final count = _portionCount;
+    final total = _total;
     return [
       SizedBox(
         height: 150,
@@ -390,34 +437,95 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
         style: StevType.body,
       ),
       const SizedBox(height: StevSpace.s4),
-      TextField(
-        key: const ValueKey('barcodePortions'),
-        controller: _portions,
-        enabled: !_saving,
-        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        decoration: InputDecoration(
-          labelText: 'Jumlah porsi (${product.portionLabel} per porsi)',
-          errorText: count == null
-              ? 'Masukkan porsi lebih dari 0, maksimal 100.'
-              : null,
-          helperText: 'Bisa desimal, misalnya 0,5 porsi.',
+      if (product.portionMl != null) ...[
+        Text(
+          'Ukuran dari database: ${_format(product.packageMl!)} ml. Cocokkan dengan isi bersih pada botolmu.',
+          style: StevType.body,
         ),
-        onChanged: (_) => setState(() {}),
-      ),
+        const SizedBox(height: StevSpace.s3),
+        TextField(
+          key: const ValueKey('barcodeVolume'),
+          controller: _volume,
+          enabled: !_saving,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: InputDecoration(
+            labelText: 'Ukuran botolmu (ml)',
+            errorText: _volumeMl == null
+                ? 'Isi volume lebih dari 0, maksimal 10000 ml.'
+                : null,
+          ),
+          onChanged: (_) => _edited(),
+        ),
+        if (_volumeMl != null && product.sizeCorrected(_volumeMl!))
+          Text(
+            'Ukuran berbeda dari database. Ini estimasi memakai kadar gula produk yang sama, bukan verifikasi varian. Jika varian atau angka gula berbeda, gunakan Scan Label Gizi.',
+            key: const ValueKey('barcodeVolumeWarning'),
+            style: StevType.body.copyWith(color: StevColors.over),
+          ),
+        const SizedBox(height: StevSpace.s3),
+        DropdownButtonFormField<double>(
+          key: const ValueKey('barcodeConsumedFraction'),
+          initialValue: _fraction,
+          isExpanded: true,
+          decoration: const InputDecoration(labelText: 'Bagian yang diminum'),
+          items: const [
+            DropdownMenuItem(value: 1, child: Text('Seluruh kemasan')),
+            DropdownMenuItem(value: 0.5, child: Text('Setengah kemasan')),
+            DropdownMenuItem(value: 0.25, child: Text('Seperempat kemasan')),
+          ],
+          onChanged: _saving
+              ? null
+              : (value) {
+                  if (value != null) {
+                    _fraction = value;
+                    _edited();
+                  }
+                },
+        ),
+      ] else
+        TextField(
+          key: const ValueKey('barcodePortions'),
+          controller: _portions,
+          enabled: !_saving,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: InputDecoration(
+            labelText: 'Jumlah porsi (${product.portionLabel} per porsi)',
+            errorText: count == null
+                ? 'Masukkan porsi lebih dari 0, maksimal 100.'
+                : null,
+            helperText: 'Bisa desimal, misalnya 0,5 porsi.',
+          ),
+          onChanged: (_) => _edited(),
+        ),
       const SizedBox(height: StevSpace.s4),
       Text(
-        count == null
+        total == null
             ? 'Total belum dapat dihitung'
-            : 'Total: ${formatSugarGrams(product.sugarGramsPerPortion * count, false)} gula',
+            : 'Total: ${formatSugarGrams(total, false)} gula',
         key: const ValueKey('barcodeSugarTotal'),
         style: StevType.heading,
       ),
       const SizedBox(height: StevSpace.s4),
+      Material(
+        color: Colors.transparent,
+        child: CheckboxListTile(
+          key: const ValueKey('confirmBarcodeSize'),
+          contentPadding: EdgeInsets.zero,
+          controlAffinity: ListTileControlAffinity.leading,
+          title: const Text(
+            'Varian minuman, ukuran kemasan, dan bagian yang diminum sudah sesuai.',
+          ),
+          value: _confirmed,
+          onChanged: total == null || _saving
+              ? null
+              : (value) => setState(() => _confirmed = value ?? false),
+        ),
+      ),
       StevButton(
         key: const ValueKey('logBarcodeDrink'),
         label: _saving ? 'Menyimpan...' : 'Konfirmasi & catat',
         variant: StevButtonVariant.leaf,
-        onPressed: count == null || _saving ? null : _save,
+        onPressed: total == null || !_confirmed || _saving ? null : _save,
       ),
     ];
   }

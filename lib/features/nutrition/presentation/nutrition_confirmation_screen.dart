@@ -24,6 +24,8 @@ class _NutritionConfirmationScreenState
   late final TextEditingController _sugar;
   late final TextEditingController _servings;
   late final TextEditingController _volume;
+  late final TextEditingController _servingMl;
+  late bool _useVolume;
   late NutritionBasis _basis;
   double _fraction = 1;
   bool _confirmed = false;
@@ -51,6 +53,13 @@ class _NutritionConfirmationScreenState
       text: label?.packageMl == null ? '' : _format(label!.packageMl!),
     );
     _basis = label?.basis ?? NutritionBasis.perServing;
+    _servingMl = TextEditingController(
+      text: label?.servingMl == null ? '' : _format(label!.servingMl!),
+    );
+    _useVolume =
+        widget.result == null ||
+        label?.servingMl != null ||
+        label?.packageMl != null;
   }
 
   double? _number(String raw) {
@@ -67,12 +76,32 @@ class _NutritionConfirmationScreenState
         basis: _basis,
         consumedFraction: _fraction,
         servingsPerPackage: _number(_servings.text),
-        packageMl: _number(_volume.text),
+        packageMl:
+            _basis == NutritionBasis.per100Ml ||
+                (_basis == NutritionBasis.perServing && _useVolume)
+            ? _number(_volume.text)
+            : null,
+        servingMl: _basis == NutritionBasis.perServing && _useVolume
+            ? _number(_servingMl.text)
+            : null,
       );
     } on FormatException {
       return null;
     }
   }
+
+  bool get _volumeConflict =>
+      _basis == NutritionBasis.perServing &&
+      nutritionVolumeMismatch(
+        servingMl: _number(_servingMl.text),
+        servingsPerPackage: _number(_servings.text),
+        packageMl: _number(_volume.text),
+      );
+
+  bool get _volumeReady =>
+      _basis != NutritionBasis.perServing ||
+      !_useVolume ||
+      (_number(_servingMl.text) != null && _number(_volume.text) != null);
 
   void _edited() => setState(() {
     _confirmed = false;
@@ -80,7 +109,12 @@ class _NutritionConfirmationScreenState
   });
 
   Future<void> _save() async {
-    if (_saving || !_confirmed || !_form.currentState!.validate()) return;
+    if (_saving ||
+        !_confirmed ||
+        !_volumeReady ||
+        !_form.currentState!.validate()) {
+      return;
+    }
     final grams = _total;
     if (grams == null) return;
     setState(() => _saving = true);
@@ -110,12 +144,13 @@ class _NutritionConfirmationScreenState
     _sugar.dispose();
     _servings.dispose();
     _volume.dispose();
+    _servingMl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final total = _total;
+    final total = _volumeReady ? _total : null;
     return Scaffold(
       key: const ValueKey('nutritionConfirmationScreen'),
       appBar: AppBar(
@@ -214,18 +249,71 @@ class _NutritionConfirmationScreenState
                   max: _basis == NutritionBasis.per100Ml ? 100 : 1000,
                 ),
                 if (_basis == NutritionBasis.perServing) ...[
-                  const SizedBox(height: StevSpace.s3),
-                  _numericField(
-                    keyName: 'nutritionServings',
-                    controller: _servings,
-                    label: 'Jumlah sajian per kemasan',
-                    min: 0.001,
-                    max: 100,
+                  Material(
+                    color: Colors.transparent,
+                    child: SwitchListTile(
+                      key: const ValueKey('nutritionUseVolume'),
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Hitung dari volume botol (ml)'),
+                      subtitle: const Text(
+                        'Matikan jika takaran saji tidak tersedia dalam ml.',
+                      ),
+                      value: _useVolume,
+                      onChanged: _saving
+                          ? null
+                          : (value) {
+                              _useVolume = value;
+                              _edited();
+                            },
+                    ),
                   ),
-                  Text(
-                    'Contoh: 9 g per sajian × 2 sajian = 18 g per kemasan.',
-                    style: StevType.caption,
-                  ),
+                  if (_useVolume) ...[
+                    _numericField(
+                      keyName: 'nutritionServingMl',
+                      controller: _servingMl,
+                      label: 'Takaran saji pada label (ml)',
+                      min: 0.001,
+                      max: 10000,
+                    ),
+                    const SizedBox(height: StevSpace.s3),
+                    _numericField(
+                      keyName: 'nutritionVolume',
+                      controller: _volume,
+                      label: 'Ukuran botolmu / isi bersih (ml)',
+                      min: 0.001,
+                      max: 10000,
+                    ),
+                    const SizedBox(height: StevSpace.s2),
+                    Text(
+                      'Baca isi bersih pada kemasan, bukan angka takaran saji. Total dihitung dari volume botol, bukan jumlah sajian yang mungkin dibulatkan.',
+                      style: StevType.caption,
+                    ),
+                  ] else ...[
+                    const SizedBox(height: StevSpace.s3),
+                    _numericField(
+                      keyName: 'nutritionServings',
+                      controller: _servings,
+                      label: 'Jumlah sajian per kemasan',
+                      min: 0.001,
+                      max: 100,
+                    ),
+                    Text(
+                      'Contoh: 9 g per sajian × 2 sajian = 18 g per kemasan.',
+                      style: StevType.caption,
+                    ),
+                  ],
+                  if (_volumeConflict)
+                    Text(
+                      'Takaran saji × jumlah sajian menghasilkan ${_format(_number(_servingMl.text)! * _number(_servings.text)!)} ml, tetapi volume botol ${_volume.text} ml. '
+                      '${_useVolume ? 'Hitungan memakai volume botol yang kamu isi' : 'Hitungan memakai jumlah sajian pada label'}. Periksa dan konfirmasi ukuran serta angka gula sebelum mencatat.',
+                      key: const ValueKey('nutritionVolumeWarning'),
+                      style: StevType.body.copyWith(color: StevColors.over),
+                    ),
+                  if (_useVolume && _number(_servings.text) != null)
+                    Text(
+                      'Jumlah sajian terbaca: ${_servings.text}. Tidak dipakai saat menghitung berdasarkan volume botol.',
+                      style: StevType.caption,
+                    ),
                 ],
                 if (_basis == NutritionBasis.per100Ml) ...[
                   const SizedBox(height: StevSpace.s3),
@@ -277,13 +365,23 @@ class _NutritionConfirmationScreenState
                   key: const ValueKey('nutritionTotal'),
                   style: StevType.heading,
                 ),
+                if (_basis == NutritionBasis.perServing &&
+                    _useVolume &&
+                    total != null)
+                  Text(
+                    '${_sugar.text} g ÷ ${_servingMl.text} ml × ${_volume.text} ml × ${_format(_fraction)} bagian',
+                    key: const ValueKey('nutritionVolumeFormula'),
+                    style: StevType.caption,
+                  ),
                 Material(
                   color: Colors.transparent,
                   child: CheckboxListTile(
                     key: const ValueKey('confirmNutritionLabel'),
                     contentPadding: EdgeInsets.zero,
-                    title: const Text(
-                      'Angka gula, takaran saji, dan bagian yang diminum sudah sesuai.',
+                    title: Text(
+                      _volumeConflict
+                          ? 'Saya sudah memeriksa perbedaan takaran, volume botol, dan dasar hitungan di atas.'
+                          : 'Angka gula, takaran saji, ukuran kemasan, dan bagian yang diminum sudah sesuai.',
                     ),
                     value: _confirmed,
                     onChanged: total == null || _saving
