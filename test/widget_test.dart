@@ -19,7 +19,7 @@ void main() {
     // Do not settle indefinitely: the real camera loading state contains an
     // indeterminate progress indicator and requires a platform device.
     await tester.pump(const Duration(seconds: 1));
-    expect(find.text('Scan minuman'), findsOneWidget);
+    expect(find.text('Arahkan ke minuman atau barcode'), findsOneWidget);
     expect(find.byKey(const ValueKey('galleryButton')), findsOneWidget);
 
     // The camera plugin requires a real browser or device, so the shell test

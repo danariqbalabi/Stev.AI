@@ -69,7 +69,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('scanButton')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.text('Scan minuman'), findsOneWidget);
+    expect(find.text('Arahkan ke minuman atau barcode'), findsOneWidget);
     expect(find.byKey(const ValueKey('photoScanScreen')), findsOneWidget);
     final manual = find.byKey(const ValueKey('manualSearchLink'));
     expect(manual, findsOneWidget);
