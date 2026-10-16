@@ -1,0 +1,84 @@
+[
+  {
+    "status": 1,
+    "product": {
+      "code": "8991749000012",
+      "product_name": "Kopi kenangan black aren",
+      "quantity": "6",
+      "categories_tags": [],
+      "nutrition_data_per": "100ml",
+      "serving_size": "1 bottle (220 ml)",
+      "serving_quantity": 220,
+      "serving_quantity_unit": "ml",
+      "nutriments": {"sugars_100g": 6.36363636363636, "sugars_serving": 14}
+    }
+  },
+  {
+    "status": 1,
+    "product": {
+      "code": "8992858527308",
+      "product_name": "Hydro Coco - Original 250ml",
+      "quantity": "250ml",
+      "product_quantity": 250,
+      "product_quantity_unit": "ml",
+      "categories_tags": ["en:beverages", "en:coconut-waters"],
+      "nutrition_data_per": "100ml",
+      "serving_size": "250 ml",
+      "nutriments": {"sugars_100g": 2.8, "sugars_serving": 7, "carbohydrates_100g": 6}
+    }
+  },
+  {
+    "status": 1,
+    "product": {
+      "code": "8997009781110",
+      "product_name": "Hydro Coco ori 500ml",
+      "quantity": "500ml",
+      "product_quantity": 500,
+      "product_quantity_unit": "ml",
+      "categories_tags": ["en:beverages", "en:coconut-waters"],
+      "nutrition_data_per": "100ml",
+      "serving_size": "1 portion (250 ml)",
+      "nutriments": {"sugars_100g": 7, "sugars_serving": 17.5, "carbohydrates_100g": 15}
+    }
+  },
+  {
+    "status": 1,
+    "product": {
+      "code": "8998009010552",
+      "product_name": "Ultra Milk Full Cream",
+      "quantity": "200mL",
+      "product_quantity": 200,
+      "product_quantity_unit": "ml",
+      "categories_tags": ["en:dairies", "en:milks-liquid-and-powder", "en:milks", "en:uht-milks"],
+      "nutrition_data_per": "100ml",
+      "serving_size": "200mL",
+      "nutriments": {"sugars_100g": 4, "sugars_serving": 8, "carbohydrates_100g": 5}
+    }
+  },
+  {
+    "status": 1,
+    "product": {
+      "code": "8998009010613",
+      "product_name": "Ultra Milk Full Cream",
+      "quantity": "1 l",
+      "product_quantity": 1000,
+      "product_quantity_unit": "ml",
+      "categories_tags": ["en:milks", "en:uht-milks", "en:whole-milks"],
+      "nutrition_data_per": "100g",
+      "serving_size": "250 ml",
+      "nutriments": {}
+    }
+  },
+  {
+    "status": 1,
+    "product": {
+      "code": "8998009010590",
+      "product_name": "ULTRA MILK MINI CHOCO",
+      "quantity": "125",
+      "categories_tags": ["en:milks", "en:uht-milks"],
+      "nutrition_data_per": "100ml",
+      "serving_size": "125ml",
+      "nutriments": {}
+    }
+  }
+]

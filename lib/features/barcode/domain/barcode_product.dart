@@ -25,6 +25,9 @@ class BarcodeProduct {
     this.catalogDrink,
     this.cachedAt,
     this.portionMl,
+    this.requiresDrinkConfirmation = false,
+    this.sizeNote,
+    this.packageVolumeMl,
   });
 
   final String barcode;
@@ -38,8 +41,12 @@ class BarcodeProduct {
   final Drink? catalogDrink;
   final DateTime? cachedAt;
   final double? portionMl;
+  final bool requiresDrinkConfirmation;
+  final String? sizeNote;
+  final double? packageVolumeMl;
   double? get packageMl =>
-      portionMl == null ? null : portionMl! * defaultPortions;
+      packageVolumeMl ??
+      (portionMl == null ? null : portionMl! * defaultPortions);
 
   bool sizeCorrected(double ml) =>
       packageMl != null && (ml - packageMl!).abs() > 0.001;
@@ -77,6 +84,9 @@ class BarcodeProduct {
     catalogDrink: catalogDrink,
     cachedAt: at,
     portionMl: portionMl,
+    requiresDrinkConfirmation: requiresDrinkConfirmation,
+    sizeNote: sizeNote,
+    packageVolumeMl: packageVolumeMl,
   );
 
   DrinkSelection selectionFor(double portions, {double? correctedMl}) {
@@ -110,11 +120,28 @@ class BarcodeProduct {
   }
 }
 
+enum BarcodeFailure {
+  notFound,
+  unsupported,
+  incompleteNutrition,
+  unknownVolume,
+  invalidData,
+  unavailable,
+  rateLimited,
+}
+
 class BarcodeLookupException implements Exception {
-  const BarcodeLookupException(this.message, {this.retryAt});
+  const BarcodeLookupException(
+    this.message, {
+    this.retryAt,
+    this.failure = BarcodeFailure.unavailable,
+    this.productName,
+  });
 
   final String message;
   final DateTime? retryAt;
+  final BarcodeFailure failure;
+  final String? productName;
 }
 
 abstract interface class BarcodeLookup {

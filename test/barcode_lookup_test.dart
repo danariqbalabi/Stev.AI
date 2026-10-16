@@ -16,6 +16,7 @@ Map<String, Object?> product({Object? sugar = 10, Object? quantity = 330}) => {
   'product': {
     'code': code,
     'product_name': 'Minuman uji',
+    'nutrition_data_per': '100ml',
     'categories_tags': ['en:beverages'],
     'nutriments': {'sugars_100g': sugar, 'carbohydrates_100g': 20},
     'product_quantity': quantity,
