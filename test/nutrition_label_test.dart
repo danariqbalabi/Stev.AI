@@ -21,6 +21,68 @@ Map<String, dynamic> labelJson() => {
 };
 
 void main() {
+  test(
+    'Pocari volume calculation does not treat rounded servings as bottle size',
+    () {
+      double total(double ml, {double fraction = 1}) => nutritionSugarFor(
+        sugarGrams: 14,
+        basis: NutritionBasis.perServing,
+        consumedFraction: fraction,
+        servingMl: 250,
+        packageMl: ml,
+        servingsPerPackage: 1.5,
+      );
+      expect(total(250), 14);
+      expect(total(250, fraction: 0.5), 7);
+      expect(total(350), closeTo(19.6, 0.00001));
+      expect(
+        nutritionVolumeMismatch(
+          servingMl: 250,
+          servingsPerPackage: 1.5,
+          packageMl: 250,
+        ),
+        isTrue,
+      );
+      expect(
+        nutritionVolumeMismatch(
+          servingMl: 250,
+          servingsPerPackage: 1,
+          packageMl: 250,
+        ),
+        isFalse,
+      );
+      expect(
+        nutritionVolumeMismatch(servingMl: 250, servingsPerPackage: 1.5),
+        isFalse,
+      );
+    },
+  );
+
+  test(
+    'invalid or incomplete ml inputs cannot silently fall back to servings',
+    () {
+      for (final ml in [
+        null,
+        0.0,
+        -1.0,
+        double.nan,
+        double.infinity,
+        10001.0,
+      ]) {
+        expect(
+          () => nutritionSugarFor(
+            sugarGrams: 14,
+            basis: NutritionBasis.perServing,
+            consumedFraction: 1,
+            servingMl: 250,
+            packageMl: ml,
+            servingsPerPackage: 1.5,
+          ),
+          throwsFormatException,
+        );
+      }
+    },
+  );
   test('calculates each basis and consumed fraction without doubling package sugar', () {
     expect(
       nutritionSugarFor(

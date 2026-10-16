@@ -97,6 +97,7 @@ double nutritionSugarFor({
   required double consumedFraction,
   double? servingsPerPackage,
   double? packageMl,
+  double? servingMl,
 }) {
   if (!sugarGrams.isFinite ||
       sugarGrams < 0 ||
@@ -111,6 +112,22 @@ double nutritionSugarFor({
   final double multiplier;
   switch (basis) {
     case NutritionBasis.perServing:
+      if (packageMl != null || servingMl != null) {
+        if (packageMl == null ||
+            servingMl == null ||
+            !packageMl.isFinite ||
+            !servingMl.isFinite ||
+            packageMl <= 0 ||
+            packageMl > 10000 ||
+            servingMl <= 0 ||
+            servingMl > 10000) {
+          throw const FormatException(
+            'Isi volume kemasan dan takaran saji dalam ml.',
+          );
+        }
+        multiplier = packageMl / servingMl;
+        break;
+      }
       if (servingsPerPackage == null ||
           !servingsPerPackage.isFinite ||
           servingsPerPackage <= 0 ||
@@ -130,6 +147,25 @@ double nutritionSugarFor({
       multiplier = 1;
   }
   return sugarGrams * multiplier * consumedFraction;
+}
+
+bool nutritionVolumeMismatch({
+  double? servingMl,
+  double? servingsPerPackage,
+  double? packageMl,
+}) {
+  if (servingMl == null ||
+      servingsPerPackage == null ||
+      packageMl == null ||
+      !servingMl.isFinite ||
+      !servingsPerPackage.isFinite ||
+      !packageMl.isFinite ||
+      servingMl <= 0 ||
+      servingsPerPackage <= 0 ||
+      packageMl <= 0) {
+    return false;
+  }
+  return (servingMl * servingsPerPackage - packageMl).abs() > 0.5;
 }
 
 DrinkSelection nutritionSelection({

@@ -10,6 +10,7 @@ class FakeLookup implements BarcodeLookup {
   int calls = 0;
   bool missing = false;
   DateTime? retryAt;
+  BarcodeProduct? product;
 
   @override
   Future<BarcodeProduct> lookup(String barcode) async {
@@ -18,15 +19,17 @@ class FakeLookup implements BarcodeLookup {
       throw BarcodeLookupException('Pencarian perlu jeda.', retryAt: retryAt);
     }
     if (missing) throw const BarcodeLookupException('Produk belum ditemukan.');
-    return BarcodeProduct(
-      barcode: barcode,
-      name: 'Teh uji',
-      sugarGramsPerPortion: 6,
-      portionLabel: '100 ml',
-      defaultPortions: 3,
-      source: 'Open Food Facts — belum diverifikasi Stev.AI',
-      sourceUrl: 'https://world.openfoodfacts.org/product/$barcode',
-    );
+    return product ??
+        BarcodeProduct(
+          barcode: barcode,
+          name: 'Teh uji',
+          sugarGramsPerPortion: 6,
+          portionLabel: '100 ml',
+          portionMl: 100,
+          defaultPortions: 3,
+          source: 'Open Food Facts — belum diverifikasi Stev.AI',
+          sourceUrl: 'https://world.openfoodfacts.org/product/$barcode',
+        );
   }
 }
 
@@ -111,19 +114,28 @@ void main() {
     expect(find.text('Teh uji'), findsOneWidget);
     expect(find.text('Total: 18 g gula'), findsOneWidget);
     expect(log.entries, isEmpty);
-    await tester.enterText(
-      find.byKey(const ValueKey('barcodePortions')),
-      '1,5',
-    );
+    await tester.enterText(find.byKey(const ValueKey('barcodeVolume')), '150');
     await tester.pump();
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('barcodeSugarTotal')),
+      150,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('Total: 9 g gula'), findsOneWidget);
+    final acknowledgement = find.byKey(const ValueKey('confirmBarcodeSize'));
+    await tester.ensureVisible(acknowledgement);
+    await tester.tap(acknowledgement);
+    await tester.pump();
     final confirm = find.byKey(const ValueKey('logBarcodeDrink'));
     await tester.ensureVisible(confirm);
     await tester.tap(confirm);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
     expect(log.entries.single.grams, 9);
-    expect(log.entries.single.drink.id, 'barcode-5449000000996');
+    expect(
+      log.entries.single.drink.id,
+      startsWith('barcode-5449000000996-size-'),
+    );
     expect(find.text('Home'), findsOneWidget);
   });
 

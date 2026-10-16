@@ -24,6 +24,7 @@ class BarcodeProduct {
     this.imageUrl,
     this.catalogDrink,
     this.cachedAt,
+    this.portionMl,
   });
 
   final String barcode;
@@ -36,6 +37,33 @@ class BarcodeProduct {
   final String? imageUrl;
   final Drink? catalogDrink;
   final DateTime? cachedAt;
+  final double? portionMl;
+  double? get packageMl =>
+      portionMl == null ? null : portionMl! * defaultPortions;
+
+  bool sizeCorrected(double ml) =>
+      packageMl != null && (ml - packageMl!).abs() > 0.001;
+
+  DrinkSelection selectionForVolume(double ml, double fraction) {
+    final baseMl = portionMl;
+    if (baseMl == null ||
+        !baseMl.isFinite ||
+        baseMl <= 0 ||
+        !ml.isFinite ||
+        ml <= 0 ||
+        ml > 10000 ||
+        !fraction.isFinite ||
+        fraction <= 0 ||
+        fraction > 1) {
+      throw const FormatException(
+        'Volume atau bagian yang diminum tidak valid.',
+      );
+    }
+    return selectionFor(
+      ml / baseMl * fraction,
+      correctedMl: sizeCorrected(ml) ? ml : null,
+    );
+  }
 
   BarcodeProduct fromCache(DateTime at) => BarcodeProduct(
     barcode: barcode,
@@ -48,25 +76,34 @@ class BarcodeProduct {
     imageUrl: imageUrl,
     catalogDrink: catalogDrink,
     cachedAt: at,
+    portionMl: portionMl,
   );
 
-  DrinkSelection selectionFor(double portions) {
+  DrinkSelection selectionFor(double portions, {double? correctedMl}) {
     if (!portions.isFinite || portions <= 0 || portions > 100) {
       throw const FormatException('Jumlah porsi tidak valid.');
     }
     return DrinkSelection(
       drink: Drink(
-        id: catalogDrink?.id ?? 'barcode-$barcode',
-        name: name,
+        id: correctedMl == null
+            ? catalogDrink?.id ?? 'barcode-$barcode'
+            : 'barcode-$barcode-size-$correctedMl',
+        name: correctedMl == null
+            ? name
+            : '$name — ukuran dikoreksi: $correctedMl ml',
         grams: sugarGramsPerPortion * portions,
-        estimated: catalogDrink?.estimated ?? true,
+        estimated: correctedMl != null || (catalogDrink?.estimated ?? true),
         category: DrinkCategory.packaged,
         kind: catalogDrink?.kind ?? DrinkKind.custom,
         photoAsset: catalogDrink?.photoAsset ?? '',
         photoUrl: imageUrl,
-        dataType: catalogDrink?.dataType ?? DrinkDataType.community,
-        validationStatus:
-            catalogDrink?.validationStatus ?? DrinkValidationStatus.unverified,
+        dataType: correctedMl != null
+            ? DrinkDataType.custom
+            : catalogDrink?.dataType ?? DrinkDataType.community,
+        validationStatus: correctedMl != null
+            ? DrinkValidationStatus.unverified
+            : catalogDrink?.validationStatus ??
+                  DrinkValidationStatus.unverified,
         sourceUrl: sourceUrl,
       ),
     );

@@ -157,11 +157,38 @@ void main() {
     expect(result.selectionFor(1.5).grams, 15);
     expect(result.selectionFor(1).drink.sourceUrl, contains(code));
     expect(result.source, contains('belum diverifikasi'));
+    expect(result.portionMl, 100);
+    expect(result.packageMl, 330);
+    expect(result.fromCache(DateTime.utc(2026)).portionMl, 100);
     expect(
       result.selectionFor(1).drink.validationStatus,
       DrinkValidationStatus.unverified,
     );
   });
+
+  test(
+    'Pocari barcode volume can be corrected without changing cached product',
+    () {
+      final payload = product(sugar: 5.6, quantity: 350);
+      final result = BarcodeLookupService.parseOpenFoodFacts(code, payload);
+      expect(result.selectionForVolume(250, 1).grams, closeTo(14, 0.000001));
+      expect(result.selectionForVolume(250, 0.5).grams, closeTo(7, 0.000001));
+      expect(
+        result.selectionForVolume(250, 1).drink.validationStatus,
+        DrinkValidationStatus.unverified,
+      );
+      expect(result.selectionForVolume(250, 1).drink.estimated, isTrue);
+      expect(
+        result.selectionForVolume(250, 1).drink.name,
+        contains('ukuran dikoreksi'),
+      );
+      expect(result.packageMl, 350);
+      for (final ml in [0.0, -1.0, double.nan, double.infinity, 10001.0]) {
+        expect(() => result.selectionForVolume(ml, 1), throwsFormatException);
+      }
+      expect(() => result.selectionForVolume(250, 2), throwsFormatException);
+    },
+  );
 
   test('zero sugar is a valid result, missing sugar is not zero', () {
     expect(
@@ -268,6 +295,14 @@ void main() {
     expect(result.sugarGramsPerPortion, 18);
     expect(result.portionLabel, contains('250 ml'));
     expect(result.source, 'Katalog Stev.AI');
+    final corrected = result.selectionForVolume(350, 1).drink;
+    expect(corrected.validationStatus, DrinkValidationStatus.unverified);
+    expect(corrected.dataType, DrinkDataType.custom);
+    expect(corrected.estimated, isTrue);
+    expect(
+      result.selectionForVolume(250, 1).drink.validationStatus,
+      DrinkValidationStatus.verified,
+    );
     await service.lookup(code);
     expect(requests, hasLength(1));
   });
