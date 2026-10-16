@@ -11,6 +11,7 @@ import '../../drinks/application/drink_log_controller.dart';
 import '../../drinks/domain/drink.dart';
 import '../data/barcode_lookup_service.dart';
 import '../domain/barcode_product.dart';
+import '../domain/stable_barcode_reader.dart';
 import '../../scan/presentation/scan_mode_switcher.dart';
 
 class BarcodeScanScreen extends StatefulWidget {
@@ -33,6 +34,11 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
     with WidgetsBindingObserver {
   late final BarcodeLookup _lookup = widget.lookup ?? BarcodeLookupService();
   final _barcode = TextEditingController();
+  final _barcodeFocus = FocusNode();
+  final _stableReader = StableBarcodeReader();
+  Timer? _focusHintTimer;
+  bool _showFocusHint = false;
+  bool _editingCode = false;
   final _portions = TextEditingController();
   final _volume = TextEditingController();
   double _fraction = 1;
@@ -84,12 +90,15 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
     WidgetsBinding.instance.addObserver(this);
     if (widget.enableCamera) {
       _scanner = MobileScannerController(
+        detectionSpeed: DetectionSpeed.normal,
+        detectionTimeoutMs: 200,
         formats: const [
           BarcodeFormat.ean8,
           BarcodeFormat.ean13,
           BarcodeFormat.upcA,
         ],
       );
+      _armFocusHint();
     }
   }
 
@@ -97,10 +106,54 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (_code != null || _loading) return;
     if (state == AppLifecycleState.inactive) {
+      _stableReader.reset();
+      _focusHintTimer?.cancel();
       unawaited(_updateCamera(false));
     } else if (state == AppLifecycleState.resumed) {
       unawaited(_updateCamera(true));
     }
+  }
+
+  void _armFocusHint() {
+    _focusHintTimer?.cancel();
+    _showFocusHint = false;
+    if (!widget.enableCamera) return;
+    _focusHintTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted && _code == null) setState(() => _showFocusHint = true);
+    });
+  }
+
+  void _onDetect(BarcodeCapture capture) {
+    if (_editingCode || _loading || _saving || _navigating || _code != null)
+      return;
+    final code = _stableReader.observe(
+      capture.barcodes
+          .where(
+            (barcode) => const [
+              BarcodeFormat.ean8,
+              BarcodeFormat.ean13,
+              BarcodeFormat.upcA,
+            ].contains(barcode.format),
+          )
+          .map((barcode) => barcode.rawValue ?? ''),
+      (widget.now ?? DateTime.now)(),
+    );
+    if (code != null) {
+      _barcode.text = code;
+      unawaited(_find(code));
+    }
+  }
+
+  void _editCode() {
+    final previous = _code ?? _barcode.text;
+    _scanAgain();
+    setState(() {
+      _editingCode = true;
+      _barcode.text = previous;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _code == null) _barcodeFocus.requestFocus();
+    });
   }
 
   Future<void> _updateCamera(bool start) async {
@@ -150,6 +203,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
     // before showing lookup/results or opening another capture flow.
     setState(() {
       _code = code;
+      _focusHintTimer?.cancel();
       _loading = true;
       _error = null;
     });
@@ -192,7 +246,10 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
   }
 
   void _scanAgain() {
+    _stableReader.reset();
+    _armFocusHint();
     setState(() {
+      _editingCode = false;
       _code = null;
       _product = null;
       _error = null;
@@ -236,6 +293,8 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _barcode.dispose();
+    _barcodeFocus.dispose();
+    _focusHintTimer?.cancel();
     _portions.dispose();
     _volume.dispose();
     _retryTimer?.cancel();
@@ -279,23 +338,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
                       height: 230,
                       child: MobileScanner(
                         controller: _scanner,
-                        onDetect: (capture) {
-                          for (final barcode in capture.barcodes) {
-                            if (![
-                              BarcodeFormat.ean8,
-                              BarcodeFormat.ean13,
-                              BarcodeFormat.upcA,
-                            ].contains(barcode.format)) {
-                              continue;
-                            }
-                            final value = barcode.rawValue;
-                            if (value != null &&
-                                validRetailBarcode(value) != null) {
-                              _find(value);
-                              break;
-                            }
-                          }
-                        },
+                        onDetect: _onDetect,
                         errorBuilder: (context, error) => ColoredBox(
                           color: StevColors.ink,
                           child: Center(
@@ -315,9 +358,19 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
                     ),
                   ),
                 const SizedBox(height: StevSpace.s4),
+                if (_showFocusHint)
+                  const Text(
+                    'Dekatkan kamera ke barcode dan tahan sebentar. Pastikan hanya satu barcode terlihat.',
+                    key: ValueKey('barcodeFocusHint'),
+                  ),
                 TextField(
                   key: const ValueKey('barcodeInput'),
                   controller: _barcode,
+                  focusNode: _barcodeFocus,
+                  onTap: () {
+                    _editingCode = true;
+                    _stableReader.reset();
+                  },
                   keyboardType: TextInputType.number,
                   textInputAction: TextInputAction.search,
                   decoration: const InputDecoration(
@@ -343,6 +396,13 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
                 ),
               ],
               if (product != null) ..._productContent(product),
+              if (_code != null && !_loading && !_saving)
+                TextButton.icon(
+                  key: const ValueKey('editBarcodeCode'),
+                  onPressed: _editCode,
+                  icon: const Icon(Icons.edit_outlined),
+                  label: Text('Kode: $_code · Koreksi'),
+                ),
               if (_error case final error?) ...[
                 const SizedBox(height: StevSpace.s4),
                 Text(
