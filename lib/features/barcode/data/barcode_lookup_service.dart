@@ -111,7 +111,7 @@ class BarcodeLookupService implements BarcodeLookup {
                 'world.openfoodfacts.org',
                 '/api/v2/product/$code.json',
                 {
-                  'fields': 'code,product_name,product_quantity,product_quantity_unit,quantity,nutriments,categories_tags,image_front_small_url',
+                  'fields': 'code,product_name,product_quantity,product_quantity_unit,quantity,nutriments,categories_tags,image_front_small_url,nutrition_data_per,serving_size,serving_quantity,serving_quantity_unit',
                   // Browsers control their own User-Agent header.
                   'app_name': 'StevAI',
                 },
@@ -131,6 +131,7 @@ class BarcodeLookupService implements BarcodeLookup {
         if (response.statusCode == 404) {
           throw const BarcodeLookupException(
             'Produk belum ditemukan. Coba Foto Minuman, cari manual, atau tambah minuman sendiri.',
+            failure: BarcodeFailure.notFound,
           );
         }
         if (response.statusCode != 200) {
@@ -161,6 +162,7 @@ class BarcodeLookupService implements BarcodeLookup {
       BarcodeLookupException(
         'Pencarian barcode perlu jeda. Kamu tetap bisa scan Label Gizi atau isi label manual.',
         retryAt: retryAt,
+        failure: BarcodeFailure.rateLimited,
       );
 
   static BarcodeProduct? _catalogProduct(
@@ -181,6 +183,7 @@ class BarcodeLookupService implements BarcodeLookup {
       sugarGramsPerPortion: drink.grams,
       portionLabel: '${_number(ml)} ml (porsi katalog)',
       portionMl: ml,
+      packageVolumeMl: ml,
       source: 'Katalog Stev.AI',
       sourceUrl: drink.sourceUrl ?? '',
       imageUrl: drink.photoUrl,
@@ -194,6 +197,7 @@ class BarcodeLookupService implements BarcodeLookup {
         decoded['product'] is! Map) {
       throw const BarcodeLookupException(
         'Produk belum ditemukan. Coba cari manual atau tambah minuman sendiri.',
+        failure: BarcodeFailure.notFound,
       );
     }
     final row = decoded['product'] as Map;
@@ -204,63 +208,103 @@ class BarcodeLookupService implements BarcodeLookup {
       );
     }
     final name = row['product_name'];
+    Never fail(String message, BarcodeFailure reason) =>
+        throw BarcodeLookupException(
+          message,
+          failure: reason,
+          productName: name is String && name.trim().isNotEmpty
+              ? name.trim().substring(0, name.trim().length.clamp(0, 160))
+              : null,
+        );
     final nutrients = row['nutriments'];
-    final tags = row['categories_tags'];
-    if (tags is! List || !tags.contains('en:beverages')) {
-      throw const BarcodeLookupException(
-        'Produk ini belum teridentifikasi sebagai minuman. Coba cari manual.',
-      );
-    }
+    final tags = row['categories_tags'] is List
+        ? (row['categories_tags'] as List).whereType<String>().toList()
+        : <String>[];
     if (tags.any(
       (tag) => const [
         'en:beverage-preparations',
         'en:syrups',
         'en:concentrated-drinks',
         'en:powdered-drinks',
+        'en:milk-powders',
+        'en:powdered-milks',
+        'en:condensed-milks',
+        'en:sweetened-condensed-milks',
       ].contains(tag),
     )) {
-      throw const BarcodeLookupException(
+      fail(
         'Produk ini perlu diracik atau diencerkan. Gunakan input manual sesuai label.',
+        BarcodeFailure.unsupported,
       );
     }
-    final sugar = nutrients is Map
+    final liquidCategory = tags.any(
+      (tag) => const [
+        'en:beverages',
+        'en:milks',
+        'en:uht-milks',
+        'en:whole-milks',
+        'en:skimmed-milks',
+        'en:semi-skimmed-milks',
+        'en:plant-milks',
+      ].contains(tag),
+    );
+    if (tags.isNotEmpty && !liquidCategory) {
+      fail(
+        'Produk ini belum teridentifikasi sebagai minuman siap minum. Foto label atau isi manual.',
+        BarcodeFailure.unsupported,
+      );
+    }
+    final servingMl = _servingVolume(row);
+    final per100Ml = row['nutrition_data_per'] == '100ml';
+    final servingSugar = nutrients is Map
+        ? _nonNegative(nutrients['sugars_serving'])
+        : null;
+    final sugar100 = per100Ml && nutrients is Map
         ? _nonNegative(nutrients['sugars_100g'])
         : null;
+    final sugarFromServing = servingMl != null && servingSugar != null
+        ? servingSugar / servingMl * 100
+        : null;
+    final sugar = sugar100 ?? sugarFromServing;
     if (name is! String ||
         name.trim().isEmpty ||
         sugar == null ||
         sugar > 100) {
-      throw const BarcodeLookupException(
-        'Produk ditemukan, tetapi data gulanya belum lengkap. Periksa label atau input manual.',
+      fail(
+        'Produk ditemukan, tetapi angka gula dan satuannya belum lengkap atau tidak valid. Foto label gizi untuk melanjutkan.',
+        BarcodeFailure.incompleteNutrition,
       );
     }
-    // Do not convert grams to millilitres. Only explicit liquid quantities
-    // allow the per-100-ml calculation used by this drink scanner.
-    var ml = switch (row['product_quantity_unit']) {
-      'ml' => _positive(row['product_quantity']),
-      'l' => (_positive(row['product_quantity']) ?? 0) * 1000,
-      _ => null,
-    };
-    final quantity = row['quantity'];
-    if (ml == null && quantity is String) {
-      final match = RegExp(
-        r'^\s*(\d+(?:[.,]\d+)?)\s*(ml|cl|l)\s*$',
-        caseSensitive: false,
-      ).firstMatch(quantity);
-      if (match != null) {
-        final value = double.parse(match[1]!.replaceAll(',', '.'));
-        ml =
-            value *
-            switch (match[2]!.toLowerCase()) {
-              'l' => 1000,
-              'cl' => 10,
-              _ => 1,
-            };
-      }
+    if (sugar100 != null &&
+        sugarFromServing != null &&
+        (sugar100 - sugarFromServing).abs() > 0.5) {
+      fail(
+        'Angka gula per sajian dan per 100 ml pada sumber tidak konsisten. Foto label gizi untuk memeriksa angkanya.',
+        BarcodeFailure.invalidData,
+      );
     }
-    if (ml == null || !ml.isFinite || ml <= 0 || ml > 10000) {
-      throw const BarcodeLookupException(
-        'Ukuran minuman dalam ml belum jelas. Periksa label atau input manual.',
+    final carbs = nutrients is Map
+        ? (per100Ml
+              ? _nonNegative(nutrients['carbohydrates_100g'])
+              : servingMl != null &&
+                    _nonNegative(nutrients['carbohydrates_serving']) != null
+              ? _nonNegative(nutrients['carbohydrates_serving'])! /
+                    servingMl *
+                    100
+              : null)
+        : null;
+    // Small differences can be rounding; gross contradictions require a label.
+    if (carbs != null && sugar > carbs + 0.5) {
+      fail(
+        'Angka gula melebihi karbohidrat pada data sumber. Foto label gizi untuk memeriksa angkanya.',
+        BarcodeFailure.invalidData,
+      );
+    }
+    final size = _packageVolume(row);
+    if (size == null || !size.ml.isFinite || size.ml <= 0 || size.ml > 10000) {
+      fail(
+        'Produk ditemukan, tetapi ukuran kemasannya belum jelas. Foto label gizi; jangan menyamakan satu sajian dengan satu botol.',
+        BarcodeFailure.unknownVolume,
       );
     }
     final image = row['image_front_small_url'];
@@ -270,7 +314,12 @@ class BarcodeLookupService implements BarcodeLookup {
       sugarGramsPerPortion: sugar,
       portionLabel: '100 ml',
       portionMl: 100,
-      defaultPortions: ml / 100,
+      defaultPortions: size.ml / 100,
+      packageVolumeMl: size.ml,
+      requiresDrinkConfirmation: tags.isEmpty,
+      sizeNote: size.fromServing
+          ? 'Ukuran memakai keterangan satu botol/kemasan pada takaran saji. Cocokkan dengan isi bersih produkmu.'
+          : null,
       source: 'Open Food Facts — belum diverifikasi Stev.AI',
       sourceUrl: 'https://world.openfoodfacts.org/product/$code',
       imageUrl: image is String && Uri.tryParse(image)?.scheme == 'https'
@@ -278,6 +327,75 @@ class BarcodeLookupService implements BarcodeLookup {
           : null,
     );
   }
+}
+
+double? _explicitMl(Object? amount, Object? unit) {
+  final value = _positive(amount);
+  if (value == null || unit is! String) return null;
+  final multiplier = switch (unit.trim().toLowerCase()) {
+    'ml' || 'milliliter' || 'milliliters' || 'millilitre' || 'millilitres' => 1,
+    'cl' => 10,
+    'l' || 'liter' || 'liters' || 'litre' || 'litres' => 1000,
+    _ => null,
+  };
+  return multiplier == null ? null : value * multiplier;
+}
+
+double? _volumeText(Object? raw) {
+  if (raw is! String) return null;
+  final match = RegExp(
+    r'^\s*(\d+(?:[.,]\d+)?)\s*(ml|cl|l|liters?|litres?|milliliters?|millilitres?)\s*$',
+    caseSensitive: false,
+  ).firstMatch(raw);
+  return match == null
+      ? null
+      : _explicitMl(match[1]!.replaceAll(',', '.'), match[2]);
+}
+
+double? _servingVolume(Map row) {
+  final unit = row['serving_quantity_unit'];
+  if (unit is String &&
+      unit.trim().isNotEmpty &&
+      _explicitMl(1, unit) == null) {
+    return null;
+  }
+  final numeric = _explicitMl(row['serving_quantity'], unit);
+  final text = row['serving_size'];
+  final parenthesized = text is String
+      ? RegExp(
+          r'^\s*1\s+(?:bottle|botol|can|kaleng|carton|kotak|kemasan|portion|serving|sajian)\s*\(([^()]+)\)\s*$',
+          caseSensitive: false,
+        ).firstMatch(text)
+      : null;
+  final parsed = _volumeText(text) ?? _volumeText(parenthesized?[1]);
+  if (numeric != null && parsed != null && (numeric - parsed).abs() > 0.5) {
+    return null;
+  }
+  return numeric ?? parsed;
+}
+
+({double ml, bool fromServing})? _packageVolume(Map row) {
+  // Never interpret a weight as a volume, or a bare serving as a whole bottle.
+  final unit = row['product_quantity_unit'];
+  if (unit is String &&
+      unit.trim().isNotEmpty &&
+      _explicitMl(1, unit) == null) {
+    return null;
+  }
+  final ml =
+      _explicitMl(row['product_quantity'], unit) ??
+      _volumeText(row['quantity']);
+  if (ml != null) return (ml: ml, fromServing: false);
+  final serving = row['serving_size'];
+  if (serving is! String ||
+      !RegExp(
+        r'^\s*1\s+(?:bottle|botol|can|kaleng|carton|kotak|kemasan)(?:\s*\([^()]+\))?\s*$',
+        caseSensitive: false,
+      ).hasMatch(serving)) {
+    return null;
+  }
+  final servingMl = _servingVolume(row);
+  return servingMl == null ? null : (ml: servingMl, fromServing: true);
 }
 
 double? _nonNegative(Object? raw) {

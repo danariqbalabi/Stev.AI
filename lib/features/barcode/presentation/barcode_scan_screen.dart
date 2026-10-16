@@ -11,6 +11,7 @@ import '../../drinks/application/drink_log_controller.dart';
 import '../../drinks/domain/drink.dart';
 import '../data/barcode_lookup_service.dart';
 import '../domain/barcode_product.dart';
+import '../domain/stable_barcode_reader.dart';
 import '../../scan/presentation/scan_mode_switcher.dart';
 
 class BarcodeScanScreen extends StatefulWidget {
@@ -33,6 +34,11 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
     with WidgetsBindingObserver {
   late final BarcodeLookup _lookup = widget.lookup ?? BarcodeLookupService();
   final _barcode = TextEditingController();
+  final _barcodeFocus = FocusNode();
+  final _stableReader = StableBarcodeReader();
+  Timer? _focusHintTimer;
+  bool _showFocusHint = false;
+  bool _editingCode = false;
   final _portions = TextEditingController();
   final _volume = TextEditingController();
   double _fraction = 1;
@@ -63,6 +69,8 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
 
   String? _code;
   String? _error;
+  BarcodeFailure? _failure;
+  String? _foundName;
   DateTime? _retryAt;
   Timer? _retryTimer;
   int get _retrySeconds {
@@ -84,12 +92,15 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
     WidgetsBinding.instance.addObserver(this);
     if (widget.enableCamera) {
       _scanner = MobileScannerController(
+        detectionSpeed: DetectionSpeed.normal,
+        detectionTimeoutMs: 200,
         formats: const [
           BarcodeFormat.ean8,
           BarcodeFormat.ean13,
           BarcodeFormat.upcA,
         ],
       );
+      _armFocusHint();
     }
   }
 
@@ -97,10 +108,55 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (_code != null || _loading) return;
     if (state == AppLifecycleState.inactive) {
+      _stableReader.reset();
+      _focusHintTimer?.cancel();
       unawaited(_updateCamera(false));
     } else if (state == AppLifecycleState.resumed) {
       unawaited(_updateCamera(true));
     }
+  }
+
+  void _armFocusHint() {
+    _focusHintTimer?.cancel();
+    _showFocusHint = false;
+    if (!widget.enableCamera) return;
+    _focusHintTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted && _code == null) setState(() => _showFocusHint = true);
+    });
+  }
+
+  void _onDetect(BarcodeCapture capture) {
+    if (_editingCode || _loading || _saving || _navigating || _code != null) {
+      return;
+    }
+    final code = _stableReader.observe(
+      capture.barcodes
+          .where(
+            (barcode) => const [
+              BarcodeFormat.ean8,
+              BarcodeFormat.ean13,
+              BarcodeFormat.upcA,
+            ].contains(barcode.format),
+          )
+          .map((barcode) => barcode.rawValue ?? ''),
+      (widget.now ?? DateTime.now)(),
+    );
+    if (code != null) {
+      _barcode.text = code;
+      unawaited(_find(code));
+    }
+  }
+
+  void _editCode() {
+    final previous = _code ?? _barcode.text;
+    _scanAgain();
+    setState(() {
+      _editingCode = true;
+      _barcode.text = previous;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _code == null) _barcodeFocus.requestFocus();
+    });
   }
 
   Future<void> _updateCamera(bool start) async {
@@ -150,8 +206,11 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
     // before showing lookup/results or opening another capture flow.
     setState(() {
       _code = code;
+      _focusHintTimer?.cancel();
       _loading = true;
       _error = null;
+      _failure = null;
+      _foundName = null;
     });
     try {
       final product = await _lookup.lookup(code);
@@ -170,6 +229,8 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
         _retryTimer?.cancel();
         setState(() {
           _error = error.message;
+          _failure = error.failure;
+          _foundName = error.productName;
           _retryAt = error.retryAt;
         });
         if (_retrySeconds > 0) {
@@ -192,10 +253,15 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
   }
 
   void _scanAgain() {
+    _stableReader.reset();
+    _armFocusHint();
     setState(() {
+      _editingCode = false;
       _code = null;
       _product = null;
       _error = null;
+      _failure = null;
+      _foundName = null;
       _barcode.clear();
       _portions.clear();
       _volume.clear();
@@ -236,6 +302,8 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _barcode.dispose();
+    _barcodeFocus.dispose();
+    _focusHintTimer?.cancel();
     _portions.dispose();
     _volume.dispose();
     _retryTimer?.cancel();
@@ -246,6 +314,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
   @override
   Widget build(BuildContext context) {
     final product = _product;
+    final lookupFailed = _code != null && product == null && _error != null;
     return Scaffold(
       key: const ValueKey('barcodeScanScreen'),
       appBar: AppBar(title: const Text('Scan barcode')),
@@ -254,12 +323,13 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
           child: ListView(
             padding: const EdgeInsets.all(StevSpace.s5),
             children: [
-              ScanModeSwitcher(
-                selected: ScanMode.barcode,
-                onChanged: _loading || _saving || _navigating
-                    ? null
-                    : (mode) => _openFallback(mode.route),
-              ),
+              if (!lookupFailed)
+                ScanModeSwitcher(
+                  selected: ScanMode.barcode,
+                  onChanged: _loading || _saving || _navigating
+                      ? null
+                      : (mode) => _openFallback(mode.route),
+                ),
               const SizedBox(height: StevSpace.s4),
               if (_code == null) ...[
                 Text(
@@ -279,23 +349,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
                       height: 230,
                       child: MobileScanner(
                         controller: _scanner,
-                        onDetect: (capture) {
-                          for (final barcode in capture.barcodes) {
-                            if (![
-                              BarcodeFormat.ean8,
-                              BarcodeFormat.ean13,
-                              BarcodeFormat.upcA,
-                            ].contains(barcode.format)) {
-                              continue;
-                            }
-                            final value = barcode.rawValue;
-                            if (value != null &&
-                                validRetailBarcode(value) != null) {
-                              _find(value);
-                              break;
-                            }
-                          }
-                        },
+                        onDetect: _onDetect,
                         errorBuilder: (context, error) => ColoredBox(
                           color: StevColors.ink,
                           child: Center(
@@ -315,9 +369,19 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
                     ),
                   ),
                 const SizedBox(height: StevSpace.s4),
+                if (_showFocusHint)
+                  const Text(
+                    'Dekatkan kamera ke barcode dan tahan sebentar. Pastikan hanya satu barcode terlihat.',
+                    key: ValueKey('barcodeFocusHint'),
+                  ),
                 TextField(
                   key: const ValueKey('barcodeInput'),
                   controller: _barcode,
+                  focusNode: _barcodeFocus,
+                  onTap: () {
+                    _editingCode = true;
+                    _stableReader.reset();
+                  },
                   keyboardType: TextInputType.number,
                   textInputAction: TextInputAction.search,
                   decoration: const InputDecoration(
@@ -343,8 +407,21 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
                 ),
               ],
               if (product != null) ..._productContent(product),
+              if (_code != null && !_loading && !_saving)
+                TextButton.icon(
+                  key: const ValueKey('editBarcodeCode'),
+                  onPressed: _editCode,
+                  icon: const Icon(Icons.edit_outlined),
+                  label: Text('Kode: $_code · Koreksi'),
+                ),
               if (_error case final error?) ...[
                 const SizedBox(height: StevSpace.s4),
+                if (_foundName != null)
+                  Text(
+                    'Produk ditemukan: $_foundName',
+                    key: const ValueKey('barcodeKnownProduct'),
+                    style: StevType.heading,
+                  ),
                 Text(
                   error,
                   key: const ValueKey('barcodeError'),
@@ -357,9 +434,15 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
                   key: const ValueKey('scanBarcodeAgain'),
                   onPressed: _scanAgain,
                   icon: const Icon(Icons.refresh_rounded),
-                  label: const Text('Scan barcode lain'),
+                  label: Text(
+                    product != null
+                        ? 'Bukan ini? Scan ulang'
+                        : 'Scan barcode lain',
+                  ),
                 ),
-                if (product == null)
+                if (product == null &&
+                    (_failure == BarcodeFailure.unavailable ||
+                        _failure == BarcodeFailure.rateLimited))
                   TextButton(
                     key: const ValueKey('retryBarcodeLookup'),
                     onPressed: _retrySeconds > 0 ? null : () => _find(_code!),
@@ -370,30 +453,29 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
                     ),
                   ),
               ],
-              if (!_loading && !_saving) ...[
-                TextButton(
-                  key: const ValueKey('barcodeScanLabel'),
-                  onPressed: () => _openFallback('/scan/label'),
-                  child: const Text('Scan Label Gizi'),
-                ),
-                TextButton(
-                  onPressed: () => _openFallback('/scan/photo'),
-                  child: const Text('Pakai Foto Minuman'),
-                ),
-                TextButton(
-                  onPressed: () => _openFallback('/manual'),
-                  child: const Text('Cari manual'),
-                ),
+              if (!_loading && !_saving && !_navigating) ...[
+                if (lookupFailed)
+                  StevButton(
+                    key: const ValueKey('barcodeScanLabel'),
+                    onPressed: () => _openFallback('/scan/label'),
+                    label: 'Foto label gizi',
+                  )
+                else
+                  TextButton(
+                    key: const ValueKey('barcodeScanLabel'),
+                    onPressed: () => _openFallback('/scan/label'),
+                    child: const Text('Scan Label Gizi'),
+                  ),
                 TextButton(
                   key: const ValueKey('barcodeManualLabel'),
                   onPressed: () => _openFallback('/nutrition/manual'),
                   child: const Text('Isi label manual'),
                 ),
-                TextButton(
-                  key: const ValueKey('barcodeCustomDrink'),
-                  onPressed: () => _openFallback('/manual/add'),
-                  child: const Text('Tambah minuman sendiri'),
-                ),
+                if (_code == null)
+                  TextButton(
+                    onPressed: () => _openFallback('/manual'),
+                    child: const Text('Cari di katalog'),
+                  ),
               ],
             ],
           ),
@@ -428,9 +510,17 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
         SelectableText(product.sourceUrl, style: StevType.micro),
       const SizedBox(height: StevSpace.s3),
       Text(
-        '${_format(product.sugarGramsPerPortion)} g gula per ${product.portionLabel}',
+        '${_density(product.sugarGramsPerPortion)} g gula per ${product.portionLabel}',
         style: StevType.label,
       ),
+      if (product.sizeNote != null)
+        Text(product.sizeNote!, style: StevType.caption),
+      if (product.requiresDrinkConfirmation)
+        Text(
+          'Kategori pada sumber belum lengkap. Pastikan ini minuman siap minum, bukan makanan, bubuk, atau konsentrat.',
+          key: const ValueKey('barcodeDrinkConfirmationNotice'),
+          style: StevType.body,
+        ),
       const SizedBox(height: StevSpace.s3),
       Text(
         'Cek varian dan ukuran pada kemasan. Sesuaikan porsi yang kamu minum sebelum mencatat.',
@@ -512,8 +602,10 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
           key: const ValueKey('confirmBarcodeSize'),
           contentPadding: EdgeInsets.zero,
           controlAffinity: ListTileControlAffinity.leading,
-          title: const Text(
-            'Varian minuman, ukuran kemasan, dan bagian yang diminum sudah sesuai.',
+          title: Text(
+            product.requiresDrinkConfirmation
+                ? 'Ini minuman siap minum. Varian, ukuran, dan bagian yang diminum sudah sesuai.'
+                : 'Varian minuman, ukuran kemasan, dan bagian yang diminum sudah sesuai.',
           ),
           value: _confirmed,
           onChanged: total == null || _saving
@@ -533,3 +625,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
 
 String _format(double value) =>
     value % 1 == 0 ? value.toStringAsFixed(0) : value.toString();
+
+String _density(double value) => value > 0 && value < 0.01
+    ? '<0.01'
+    : value.toStringAsFixed(2).replaceFirst(RegExp(r'\.?0+$'), '');
