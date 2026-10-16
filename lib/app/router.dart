@@ -25,6 +25,7 @@ import '../features/risk_assessment/presentation/risk_assessment_screen.dart';
 import '../features/risk_assessment/presentation/risk_invite_screen.dart';
 import '../features/risk_assessment/presentation/risk_result_screen.dart';
 import '../features/scan/presentation/scan_screen.dart';
+import '../features/scan/presentation/unrecognized_drink_screen.dart';
 import '../features/weekly/presentation/weekly_screen.dart';
 
 GoRouter createAppRouter({required bool onboardingComplete}) {
@@ -76,17 +77,30 @@ GoRouter createAppRouter({required bool onboardingComplete}) {
       ),
       GoRoute(path: '/scan/photo', redirect: (context, state) => '/scan'),
       GoRoute(
+        path: '/scan/unrecognized',
+        builder: (_, state) => UnrecognizedDrinkScreen(
+          photoBytes: state.extra is Uint8List
+              ? state.extra as Uint8List
+              : null,
+        ),
+      ),
+      GoRoute(
         path: '/scan/barcode',
         builder: (context, state) => const BarcodeScanScreen(),
       ),
       GoRoute(
         path: '/scan/label',
-        builder: (context, state) =>
-            const ScanScreen(key: ValueKey('labelCamera'), labelMode: true),
+        builder: (context, state) => ScanScreen(
+          key: const ValueKey('labelCamera'),
+          labelMode: true,
+          barcode: state.extra is String ? state.extra as String : null,
+        ),
       ),
       GoRoute(
         path: '/nutrition/manual',
-        builder: (context, state) => const NutritionConfirmationScreen(),
+        builder: (context, state) => NutritionConfirmationScreen(
+          barcode: state.extra is String ? state.extra as String : null,
+        ),
       ),
       GoRoute(
         path: '/nutrition/confirm',
@@ -123,7 +137,18 @@ GoRouter createAppRouter({required bool onboardingComplete}) {
       ),
       GoRoute(
         path: '/result',
+        // A browser reload can lose the in-memory Drink extra. Rescan instead
+        // of silently showing the photo flow's default drink as barcode data.
+        redirect: (_, state) =>
+            state.uri.queryParameters.containsKey('barcodeMl') &&
+                state.extra is! Drink
+            ? '/scan/barcode'
+            : null,
         builder: (context, state) => ResultScreen(
+          barcodeMl: state.extra is Drink
+              ? double.tryParse(state.uri.queryParameters['barcodeMl'] ?? '')
+              : null,
+          confirmDrink: state.uri.queryParameters['confirmDrink'] == 'true',
           drink: state.extra is Drink
               ? state.extra! as Drink
               : DrinkCatalog.esTehManis,

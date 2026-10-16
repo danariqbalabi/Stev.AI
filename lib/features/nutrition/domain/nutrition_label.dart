@@ -187,9 +187,15 @@ DrinkSelection nutritionSelection({
 );
 
 class NutritionScanResult {
-  const NutritionScanResult({required this.photoBytes, required this.label});
+  const NutritionScanResult({
+    required this.photoBytes,
+    required this.label,
+    this.barcode,
+  });
   final Uint8List photoBytes;
   final NutritionLabel label;
+  // Navigation context only. OCR records remain private, never catalog writes.
+  final String? barcode;
 }
 
 class NutritionLabelException implements Exception {

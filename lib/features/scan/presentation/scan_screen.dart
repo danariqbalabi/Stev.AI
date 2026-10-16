@@ -6,12 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/theme/stev_tokens.dart';
+
 import '../../recognition/data/drink_recognition_service_factory.dart';
 import '../../recognition/domain/drink_recognition.dart';
 import '../../drinks/application/drink_catalog_controller.dart';
 import '../../nutrition/data/remote_nutrition_label_reader.dart';
 import '../../nutrition/domain/nutrition_label.dart';
-import 'scan_mode_switcher.dart';
 
 class ScanScreen extends StatefulWidget {
   const ScanScreen({
@@ -19,11 +20,13 @@ class ScanScreen extends StatefulWidget {
     this.recognitionService,
     this.labelMode = false,
     this.nutritionReader,
+    this.barcode,
   });
 
   final DrinkRecognitionService? recognitionService;
   final bool labelMode;
   final NutritionLabelReader? nutritionReader;
+  final String? barcode;
 
   @override
   State<ScanScreen> createState() => _ScanScreenState();
@@ -161,13 +164,13 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _switchMode(ScanMode mode) async {
+  Future<void> _openBarcode() async {
     if (_isSwitchingMode || _isCapturing || _isPickingImage || _isRecognizing) {
       return;
     }
     setState(() => _isSwitchingMode = true);
     await _releaseCamera();
-    if (mounted) context.pushReplacement(mode.route);
+    if (mounted) context.pushReplacement('/scan/barcode');
   }
 
   String _messageForCameraError(CameraException error) {
@@ -271,7 +274,10 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
   Future<void> _openManualLabel() async {
     await _releaseCamera();
     if (!mounted) return;
-    final retake = await context.push<bool>('/nutrition/manual');
+    final retake = await context.push<bool>(
+      '/nutrition/manual',
+      extra: widget.barcode,
+    );
     if (mounted && retake == true) {
       await _retakePhoto();
       return;
@@ -302,7 +308,11 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
         setState(() => _isRecognizing = false);
         final retake = await context.push<bool>(
           '/nutrition/confirm',
-          extra: NutritionScanResult(photoBytes: photoBytes, label: label),
+          extra: NutritionScanResult(
+            photoBytes: photoBytes,
+            label: label,
+            barcode: widget.barcode,
+          ),
         );
         if (mounted && retake == true) await _retakePhoto();
         return;
@@ -315,6 +325,8 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
         );
       }
 
+      await _releaseCamera();
+      if (!mounted) return;
       setState(() => _isRecognizing = false);
       context.push(
         '/confirmation',
@@ -331,6 +343,14 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
       });
     } on DrinkRecognitionException catch (error) {
       if (!mounted) return;
+      if (error.message.startsWith('Stev belum yakin') ||
+          error.message.startsWith('Minuman belum dikenali.')) {
+        await _releaseCamera();
+        if (mounted) {
+          context.pushReplacement('/scan/unrecognized', extra: photoBytes);
+        }
+        return;
+      }
       setState(() {
         _isRecognizing = false;
         _recognitionError = error.message;
@@ -340,7 +360,7 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
       setState(() {
         _isRecognizing = false;
         _recognitionError =
-            'Stev belum bisa mengenali foto ini. Coba lagi atau cari manual.';
+            'Layanan pengenalan belum dapat digunakan. Coba lagi.';
       });
     }
   }
@@ -378,6 +398,14 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final hasPhoto = _photoBytes != null;
 
+    if (!hasPhoto) {
+      return Scaffold(
+        key: ValueKey(widget.labelMode ? 'labelScanScreen' : 'photoScanScreen'),
+        backgroundColor: StevColors.ink,
+        body: SafeArea(child: _buildCameraContent()),
+      );
+    }
+
     return Scaffold(
       key: ValueKey(widget.labelMode ? 'labelScanScreen' : 'photoScanScreen'),
       appBar: AppBar(
@@ -398,64 +426,173 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
     );
   }
 
+  Future<void> _toggleFlash() async {
+    final controller = _cameraController;
+    if (controller == null || !controller.value.isInitialized) return;
+    try {
+      await controller.setFlashMode(
+        controller.value.flashMode == FlashMode.torch
+            ? FlashMode.off
+            : FlashMode.torch,
+      );
+      if (mounted) setState(() {});
+    } on CameraException {
+      _showSnackBar('Lampu tidak tersedia di kamera ini.');
+    }
+  }
+
   Widget _buildCameraContent() {
-    return Column(
+    final ready =
+        (_cameraController?.value.isInitialized ?? false) &&
+        !_isCapturing &&
+        !_isSwitchingMode;
+    return Stack(
+      fit: StackFit.expand,
       children: [
-        Text(
-          widget.labelMode
-              ? 'Foto seluruh tabel Informasi Nilai Gizi. Pastikan gula, takaran saji, dan sajian per kemasan terbaca jelas.'
-              : 'Arahkan kamera ke minuman atau menu. Pastikan nama dan ukuran terlihat jelas.',
-          textAlign: TextAlign.center,
+        Positioned.fill(
+          top: _errorMessage != null ? 64 : 0,
+          bottom: _errorMessage != null ? 240 : 0,
+          child: _buildCameraViewport(),
         ),
-        const SizedBox(height: 16),
-        Expanded(child: _buildCameraViewport()),
-        const SizedBox(height: 12),
-        ScanModeSwitcher(
-          selected: widget.labelMode ? ScanMode.label : ScanMode.photo,
-          onChanged: _isSwitchingMode || _isCapturing || _isPickingImage
-              ? null
-              : _switchMode,
-        ),
-        if (widget.labelMode)
-          TextButton(
-            key: const ValueKey('manualNutritionLabel'),
-            onPressed: _openManualLabel,
-            child: const Text('Isi label manual'),
-          ),
-        const SizedBox(height: 20),
-        if (_cameraController?.value.isInitialized ?? false)
-          FilledButton.icon(
-            key: const ValueKey('captureButton'),
-            onPressed: _isCapturing ? null : _capturePhoto,
-            icon: _isCapturing
-                ? const SizedBox.square(
-                    dimension: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.camera_alt_outlined),
-            label: Text(_isCapturing ? 'Mengambil foto...' : 'Ambil foto'),
-          ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Flexible(
-              child: TextButton.icon(
-                key: const ValueKey('galleryButton'),
-                onPressed: _isPickingImage ? null : _pickFromGallery,
-                icon: const Icon(Icons.photo_library_outlined),
-                label: Text(
-                  _isPickingImage ? 'Membuka galeri...' : 'Pilih dari galeri',
+        Positioned(
+          top: StevSpace.s3,
+          left: StevSpace.s5,
+          right: StevSpace.s5,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton.filledTonal(
+                style: IconButton.styleFrom(
+                  backgroundColor: StevColors.photoButton,
+                  foregroundColor: StevColors.onInk,
+                ),
+                tooltip: 'Tutup kamera',
+                onPressed: () {
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    context.go('/');
+                  }
+                },
+                icon: const Icon(Icons.close),
+              ),
+              IconButton.filledTonal(
+                style: IconButton.styleFrom(
+                  backgroundColor: StevColors.photoButton,
+                  foregroundColor: StevColors.onInk,
+                ),
+                tooltip: 'Lampu kilat',
+                onPressed: ready ? _toggleFlash : null,
+                icon: Icon(
+                  _cameraController?.value.flashMode == FlashMode.torch
+                      ? Icons.flash_on
+                      : Icons.flash_off,
                 ),
               ),
-            ),
-            Flexible(
-              child: TextButton(
+            ],
+          ),
+        ),
+        Positioned(
+          bottom: 0,
+          left: StevSpace.s5,
+          right: StevSpace.s5,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: StevSpace.s4,
+                  vertical: StevSpace.s2,
+                ),
+                decoration: BoxDecoration(
+                  color: StevColors.ink.withValues(alpha: 0.8),
+                  borderRadius: BorderRadius.circular(StevRadius.pill),
+                ),
+                child: Text(
+                  widget.labelMode
+                      ? 'Foto seluruh tabel nilai gizi dan isi bersih'
+                      : 'Arahkan ke minuman atau barcode',
+                  textAlign: TextAlign.center,
+                  style: StevType.body.copyWith(color: StevColors.onInk),
+                ),
+              ),
+              const SizedBox(height: StevSpace.s5),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  IconButton.filledTonal(
+                    style: IconButton.styleFrom(
+                      backgroundColor: StevColors.photoButton,
+                      foregroundColor: StevColors.onInk,
+                    ),
+                    key: const ValueKey('galleryButton'),
+                    tooltip: 'Pilih dari galeri',
+                    onPressed: _isPickingImage || _isSwitchingMode
+                        ? null
+                        : _pickFromGallery,
+                    icon: const Icon(Icons.photo_library_outlined),
+                  ),
+                  Semantics(
+                    button: true,
+                    label: 'Ambil foto',
+                    child: InkWell(
+                      key: const ValueKey('captureButton'),
+                      onTap: ready ? _capturePhoto : null,
+                      customBorder: const CircleBorder(),
+                      child: Container(
+                        width: 80,
+                        height: 80,
+                        padding: const EdgeInsets.all(5),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: StevColors.onInk, width: 4),
+                        ),
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: ready ? StevColors.onInk : StevColors.ink3,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 48),
+                ],
+              ),
+              TextButton(
+                key: ValueKey(
+                  widget.labelMode
+                      ? 'manualNutritionLabel'
+                      : 'openBarcodeScanner',
+                ),
+                onPressed: _isSwitchingMode
+                    ? null
+                    : widget.labelMode
+                    ? _openManualLabel
+                    : _openBarcode,
+                style: TextButton.styleFrom(foregroundColor: StevColors.onInk),
+                child: Text(widget.labelMode ? 'Isi manual' : 'Scan barcode'),
+              ),
+              TextButton(
                 key: const ValueKey('manualSearchLink'),
-                onPressed: () => context.push('/manual'),
+                onPressed: _isSwitchingMode
+                    ? null
+                    : () async {
+                        await _releaseCamera();
+                        if (!mounted) return;
+                        await context.push('/manual');
+                        if (mounted &&
+                            ModalRoute.of(context)?.isCurrent == true) {
+                          await _initializeCamera();
+                        }
+                      },
+                style: TextButton.styleFrom(
+                  foregroundColor: StevColors.onNight2,
+                ),
                 child: const Text('Cari manual'),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
     );
@@ -560,7 +697,7 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
             error,
             key: const ValueKey('recognitionError'),
             textAlign: TextAlign.center,
-            style: TextStyle(color: Theme.of(context).colorScheme.error),
+            style: StevType.body.copyWith(color: StevColors.ink2),
           ),
         ],
         const SizedBox(height: 16),

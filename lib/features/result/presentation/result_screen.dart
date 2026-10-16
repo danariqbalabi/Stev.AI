@@ -14,9 +14,16 @@ import '../../swap/presentation/swap_options_sheet.dart';
 import '../../swap/presentation/swap_reward_overlay.dart';
 
 class ResultScreen extends StatefulWidget {
-  const ResultScreen({super.key, required this.drink});
+  const ResultScreen({
+    super.key,
+    required this.drink,
+    this.barcodeMl,
+    this.confirmDrink = false,
+  });
 
   final Drink drink;
+  final double? barcodeMl;
+  final bool confirmDrink;
 
   @override
   State<ResultScreen> createState() => _ResultScreenState();
@@ -67,8 +74,16 @@ class _ResultScreenState extends State<ResultScreen> {
         backgroundColor: StevColors.ink,
         body: LayoutBuilder(
           builder: (context, constraints) {
-            final targetHeight = hasLevels ? 590.0 : 504.0;
-            final minTop = hasLevels ? 220.0 : 280.0;
+            final targetHeight = widget.barcodeMl != null
+                ? 620.0
+                : hasLevels
+                ? 590.0
+                : 504.0;
+            final minTop = widget.barcodeMl != null
+                ? 180.0
+                : hasLevels
+                ? 220.0
+                : 280.0;
             final maxTop = hasLevels ? 300.0 : 360.0;
             final sheetTop = (constraints.maxHeight - targetHeight).clamp(
               minTop,
@@ -93,6 +108,8 @@ class _ResultScreenState extends State<ResultScreen> {
                   top: sheetTop,
                   bottom: 0,
                   child: _ResultSheet(
+                    barcodeMl: widget.barcodeMl,
+                    confirmDrink: widget.confirmDrink,
                     selection: selection,
                     overGrams: overGrams,
                     hasSwap: hasSwap,
@@ -103,11 +120,11 @@ class _ResultScreenState extends State<ResultScreen> {
                     onSwap: _openSwap,
                   ),
                 ),
-                const Positioned(
+                Positioned(
                   top: 0,
                   left: 0,
                   right: 0,
-                  child: _ResultHeader(),
+                  child: _ResultHeader(fromBarcode: widget.barcodeMl != null),
                 ),
               ],
             );
@@ -163,7 +180,8 @@ class _PhotoShade extends StatelessWidget {
 }
 
 class _ResultHeader extends StatelessWidget {
-  const _ResultHeader();
+  const _ResultHeader({this.fromBarcode = false});
+  final bool fromBarcode;
 
   @override
   Widget build(BuildContext context) {
@@ -183,7 +201,18 @@ class _ResultHeader extends StatelessWidget {
             children: [
               Align(
                 alignment: Alignment.centerLeft,
-                child: _PhotoBackButton(onPressed: () => context.pop()),
+                child: _PhotoBackButton(
+                  foreground: fromBarcode ? StevColors.ink : StevColors.onInk,
+                  onPressed: () {
+                    if (fromBarcode) {
+                      context.pushReplacement('/scan/barcode');
+                    } else if (context.canPop()) {
+                      context.pop();
+                    } else {
+                      context.go('/scan');
+                    }
+                  },
+                ),
               ),
               ClipRRect(
                 borderRadius: BorderRadius.circular(StevRadius.pill),
@@ -218,9 +247,13 @@ class _ResultHeader extends StatelessWidget {
 }
 
 class _PhotoBackButton extends StatelessWidget {
-  const _PhotoBackButton({required this.onPressed});
+  const _PhotoBackButton({
+    required this.onPressed,
+    this.foreground = StevColors.onInk,
+  });
 
   final VoidCallback onPressed;
+  final Color foreground;
 
   @override
   Widget build(BuildContext context) {
@@ -236,12 +269,12 @@ class _PhotoBackButton extends StatelessWidget {
             key: const ValueKey('resultBackButton'),
             onTap: onPressed,
             customBorder: const CircleBorder(),
-            child: const SizedBox.square(
+            child: SizedBox.square(
               dimension: StevSize.roundButton,
               child: Icon(
                 Icons.arrow_back_ios_new_rounded,
                 size: 19,
-                color: StevColors.onInk,
+                color: foreground,
               ),
             ),
           ),
@@ -253,6 +286,8 @@ class _PhotoBackButton extends StatelessWidget {
 
 class _ResultSheet extends StatelessWidget {
   const _ResultSheet({
+    this.barcodeMl,
+    this.confirmDrink = false,
     required this.selection,
     required this.overGrams,
     required this.hasSwap,
@@ -262,6 +297,8 @@ class _ResultSheet extends StatelessWidget {
   });
 
   final DrinkSelection selection;
+  final double? barcodeMl;
+  final bool confirmDrink;
   final double overGrams;
   final bool hasSwap;
   final ValueChanged<SugarLevel> onLevelChanged;
@@ -298,6 +335,18 @@ class _ResultSheet extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(selection.drink.name, style: StevType.headingResult),
+                if (barcodeMl case final ml?)
+                  Text(
+                    '${ml % 1 == 0 ? ml.toStringAsFixed(0) : ml.toStringAsFixed(1)} ml · dari barcode',
+                    key: const ValueKey('barcodeResultSize'),
+                    style: StevType.caption.copyWith(color: StevColors.ink2),
+                  ),
+                if (confirmDrink)
+                  Text(
+                    'Pastikan ini minuman siap minum.',
+                    key: const ValueKey('barcodeDrinkConfirmationNotice'),
+                    style: StevType.caption,
+                  ),
                 const SizedBox(height: StevSpace.s1),
                 Text(
                   selection.drink.validationStatus == DrinkValidationStatus.demo
@@ -317,8 +366,12 @@ class _ResultSheet extends StatelessWidget {
                   ),
                 ],
                 const SizedBox(height: 14),
-                _SugarCard(selection: selection, overGrams: overGrams),
-                const SizedBox(height: 53),
+                _SugarCard(
+                  selection: selection,
+                  overGrams: overGrams,
+                  neutralWarning: barcodeMl != null,
+                ),
+                SizedBox(height: barcodeMl == null ? 53 : StevSpace.s4),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -327,7 +380,9 @@ class _ResultSheet extends StatelessWidget {
                       child: StevButton(
                         key: const ValueKey('chooseDrinkButton'),
                         label: 'Aku pilih ini',
-                        variant: StevButtonVariant.card,
+                        variant: barcodeMl == null
+                            ? StevButtonVariant.card
+                            : StevButtonVariant.ink,
                         onPressed: onChoose,
                       ),
                     ),
@@ -335,17 +390,39 @@ class _ResultSheet extends StatelessWidget {
                       const SizedBox(width: StevSpace.s3),
                       Expanded(
                         flex: 4,
-                        child: StevButton(
-                          key: const ValueKey('swapButton'),
-                          label: 'Swap',
-                          variant: StevButtonVariant.leaf,
-                          icon: const Icon(Icons.swap_horiz_rounded),
-                          onPressed: onSwap,
-                        ),
+                        child: barcodeMl != null
+                            ? TextButton(
+                                key: const ValueKey('swapButton'),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: StevColors.ink2,
+                                  textStyle: StevType.caption,
+                                ),
+                                onPressed: onSwap,
+                                child: const Text('Tukar'),
+                              )
+                            : StevButton(
+                                key: const ValueKey('swapButton'),
+                                label: 'Swap',
+                                variant: StevButtonVariant.leaf,
+                                icon: const Icon(Icons.swap_horiz_rounded),
+                                onPressed: onSwap,
+                              ),
                       ),
                     ],
                   ],
                 ),
+                if (barcodeMl != null)
+                  Center(
+                    child: TextButton(
+                      key: const ValueKey('scanBarcodeAgain'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: StevColors.ink2,
+                        textStyle: StevType.caption,
+                      ),
+                      onPressed: () => context.pushReplacement('/scan/barcode'),
+                      child: const Text('Bukan ini? Scan ulang'),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -439,7 +516,12 @@ class _LevelChoice extends StatelessWidget {
 }
 
 class _SugarCard extends StatelessWidget {
-  const _SugarCard({required this.selection, required this.overGrams});
+  const _SugarCard({
+    required this.selection,
+    required this.overGrams,
+    this.neutralWarning = false,
+  });
+  final bool neutralWarning;
 
   final DrinkSelection selection;
   final double overGrams;
@@ -461,7 +543,7 @@ class _SugarCard extends StatelessWidget {
           '$displayLabel gula. ${isOver ? 'Lewat $overLabel gram dari batas harian.' : 'Masih aman.'}',
       child: ExcludeSemantics(
         child: SizedBox(
-          height: 290,
+          height: neutralWarning ? 251 : 290,
           child: Stack(
             clipBehavior: Clip.none,
             alignment: Alignment.topCenter,
@@ -539,7 +621,9 @@ class _SugarCard extends StatelessWidget {
                             TextSpan(
                               text: '$overLabel g',
                               style: StevType.body.copyWith(
-                                color: StevColors.over,
+                                color: neutralWarning
+                                    ? StevColors.ink2
+                                    : StevColors.over,
                               ),
                             ),
                             const TextSpan(text: '!'),
@@ -551,13 +635,14 @@ class _SugarCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Positioned(
-                bottom: 0,
-                child: AnimatedStevMascot(
-                  mood: isOver ? StevMood.worried : StevMood.happy,
-                  size: StevSize.stevResult,
+              if (!neutralWarning)
+                Positioned(
+                  bottom: 0,
+                  child: AnimatedStevMascot(
+                    mood: isOver ? StevMood.worried : StevMood.happy,
+                    size: StevSize.stevResult,
+                  ),
                 ),
-              ),
             ],
           ),
         ),
